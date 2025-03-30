@@ -569,13 +569,34 @@
         }
         
         .voice-duration {
-            font-size: 0.8rem;
-            color: #8e8e8e;
+            font-size: 0.85rem;
+            font-weight: 600;
             margin-left: auto;
+            padding: 2px 8px;
+            border-radius: 10px;
         }
         
-        body.dark .voice-duration {
-            color: #a8a8a8;
+        /* For light-colored backgrounds */
+        .received .voice-duration {
+            color: #0095f6;
+            background-color: rgba(0, 149, 246, 0.1);
+        }
+        
+        /* For dark blue message backgrounds (sent messages) */
+        .sent .voice-duration {
+            color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.25);
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+        }
+        
+        body.dark .received .voice-duration {
+            color: #1a91ff;
+            background-color: rgba(26, 145, 255, 0.2);
+        }
+        
+        body.dark .sent .voice-duration {
+            color: #ffffff;
+            background-color: rgba(255, 255, 255, 0.2);
         }
         
         /* Add avatar next to received messages */
@@ -1431,37 +1452,47 @@
 
             // Dark Mode Toggle Functionality
             const themeToggle = document.getElementById('theme-toggle');
-            const darkIcon = document.querySelector('.dark-icon');
-            const lightIcon = document.querySelector('.light-icon');
-            
-            // Check for saved theme preference or default to light
-            const currentTheme = localStorage.getItem('theme') || 'light';
-            
-            // Apply the saved theme
-            if (currentTheme === 'dark') {
-                document.body.classList.add('dark');
-                darkIcon.classList.add('d-none');
-                lightIcon.classList.remove('d-none');
-            } else {
-                document.body.classList.remove('dark');
-                darkIcon.classList.remove('d-none');
-                lightIcon.classList.add('d-none');
-            }
-            
-            // Toggle theme on button click
-            themeToggle.addEventListener('click', function() {
-                if (document.body.classList.contains('dark')) {
-                    document.body.classList.remove('dark');
-                    localStorage.setItem('theme', 'light');
-                    darkIcon.classList.remove('d-none');
-                    lightIcon.classList.add('d-none');
-                } else {
+            if (themeToggle) {
+                const darkIcon = document.getElementById('dark-icon');
+                const lightIcon = document.getElementById('light-icon');
+                
+                // Check for saved theme preference or default to light
+                const currentTheme = localStorage.getItem('theme') || 'light';
+                
+                // Apply the saved theme
+                if (currentTheme === 'dark') {
                     document.body.classList.add('dark');
-                    localStorage.setItem('theme', 'dark');
-                    darkIcon.classList.add('d-none');
-                    lightIcon.classList.remove('d-none');
+                    if (darkIcon) darkIcon.classList.add('d-none');
+                    if (lightIcon) lightIcon.classList.remove('d-none');
+                } else {
+                    document.body.classList.remove('dark');
+                    if (darkIcon) darkIcon.classList.remove('d-none');
+                    if (lightIcon) lightIcon.classList.add('d-none');
                 }
-            });
+                
+                // Toggle theme on button click
+                themeToggle.addEventListener('click', function() {
+                    if (document.body.classList.contains('dark')) {
+                        document.body.classList.remove('dark');
+                        localStorage.setItem('theme', 'light');
+                        if (darkIcon) darkIcon.classList.remove('d-none');
+                        if (lightIcon) lightIcon.classList.add('d-none');
+                    } else {
+                        document.body.classList.add('dark');
+                        localStorage.setItem('theme', 'dark');
+                        if (darkIcon) darkIcon.classList.add('d-none');
+                        if (lightIcon) lightIcon.classList.remove('d-none');
+                    }
+                });
+            } else {
+                // No theme toggle in this view, just apply the saved theme
+                const currentTheme = localStorage.getItem('theme') || 'light';
+                if (currentTheme === 'dark') {
+                    document.body.classList.add('dark');
+                } else {
+                    document.body.classList.remove('dark');
+                }
+            }
 
             // Prevent HTMX refreshes during audio playback
             let isAudioPlaying = false;
@@ -1541,6 +1572,85 @@
             document.getElementById('decline-call-btn').addEventListener('click', function() {
                 callRingtone.pause();
                 callRingtone.currentTime = 0;
+            });
+
+            // Initialize voice message players
+            const audioPlayers = document.querySelectorAll('.voice-player');
+            
+            // Process each audio player
+            audioPlayers.forEach(player => {
+                // Get parent container elements
+                const container = player.closest('.voice-message-container');
+                const playButton = container.querySelector('.voice-play-button');
+                const durationDisplay = container.querySelector('.voice-duration');
+                const waveform = container.querySelector('.voice-waveform');
+                const waveformBars = container.querySelectorAll('.waveform-bar');
+                
+                // Set initial state for play button
+                playButton.setAttribute('data-playing', 'false');
+                
+                // When metadata is loaded, update the duration display
+                player.addEventListener('loadedmetadata', function() {
+                    const duration = Math.round(player.duration);
+                    const minutes = Math.floor(duration / 60);
+                    const seconds = duration % 60;
+                    durationDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                });
+                
+                // Handle play button click
+                playButton.addEventListener('click', function() {
+                    const isPlaying = playButton.getAttribute('data-playing') === 'true';
+                    
+                    // Stop all other playing audio first
+                    audioPlayers.forEach(otherPlayer => {
+                        if (otherPlayer !== player && !otherPlayer.paused) {
+                            otherPlayer.pause();
+                            const otherContainer = otherPlayer.closest('.voice-message-container');
+                            const otherPlayButton = otherContainer.querySelector('.voice-play-button');
+                            otherPlayButton.innerHTML = '<i class="fas fa-play"></i>';
+                            otherPlayButton.setAttribute('data-playing', 'false');
+                            
+                            // Reset waveform animation
+                            const otherWaveformBars = otherContainer.querySelectorAll('.waveform-bar');
+                            otherWaveformBars.forEach(bar => {
+                                bar.style.animation = 'none';
+                            });
+                        }
+                    });
+                    
+                    if (isPlaying) {
+                        // Pause audio
+                        player.pause();
+                        playButton.innerHTML = '<i class="fas fa-play"></i>';
+                        playButton.setAttribute('data-playing', 'false');
+                        
+                        // Stop waveform animation
+                        waveformBars.forEach(bar => {
+                            bar.style.animation = 'none';
+                        });
+                    } else {
+                        // Play audio
+                        player.play();
+                        playButton.innerHTML = '<i class="fas fa-pause"></i>';
+                        playButton.setAttribute('data-playing', 'true');
+                        
+                        // Animate waveform
+                        waveformBars.forEach((bar, index) => {
+                            bar.style.animation = `wave 1.2s ease-in-out ${index * 0.1}s infinite alternate`;
+                        });
+                    }
+                });
+                
+                // When audio ends
+                player.addEventListener('ended', function() {
+                    playButton.innerHTML = '<i class="fas fa-play"></i>';
+                    playButton.setAttribute('data-playing', 'false');
+                    
+                    // Stop waveform animation
+                    waveformBars.forEach(bar => {
+                        bar.style.animation = 'none';
+                    });
+                });
             });
         });
     </script>

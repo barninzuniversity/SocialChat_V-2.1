@@ -208,6 +208,37 @@ body.dark-mode .splash-text {
     text-align: center;
 }
 
+.voice-duration {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-left: auto;
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+/* For light-colored backgrounds (received messages) */
+.received .voice-duration {
+    color: #4F46E5;
+    background-color: rgba(79, 70, 229, 0.15);
+}
+
+/* For dark colored message backgrounds (sent messages) */
+.sent .voice-duration {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.25);
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+}
+
+body.dark .received .voice-duration {
+    color: #6366F1;
+    background-color: rgba(99, 102, 241, 0.2);
+}
+
+body.dark .sent .voice-duration {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
 /* Voice Call UI */
 .voice-call-button {
     width: 40px;

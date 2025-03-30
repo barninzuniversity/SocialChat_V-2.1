@@ -85,7 +85,7 @@
                                 <a href="{% url 'profile_detail' post.author.user.username %}" class="text-decoration-none fw-bold">
                                     {{ post.author.user.username }}
                                 </a>
-                                <div class="text-muted small">{{ post.created_at|to_user_timezone:request.session.user_timezone }}</div>
+                                <div class="text-muted small">{{ post.created_at|to_user_timezone:user_timezone }}</div>
                             </div>
                         </div>
                         

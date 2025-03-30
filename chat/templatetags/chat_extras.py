@@ -28,7 +28,7 @@ def to_user_timezone(value, user_timezone=None):
         return ""
     
     # If no timezone provided, return formatted UTC time
-    if not user_timezone:
+    if not user_timezone or user_timezone == 'not-set':
         return value.strftime("%b %d, %Y, %I:%M %p")
     
     try:

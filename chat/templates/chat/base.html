@@ -396,12 +396,6 @@
                 </ul>
                 
                 <div class="d-flex align-items-center">
-                    <!-- Dark/Light Mode Toggle -->
-                    <button id="theme-toggle" class="me-3" title="Toggle dark/light mode">
-                        <i class="fas fa-moon" id="dark-icon"></i>
-                        <i class="fas fa-sun d-none" id="light-icon"></i>
-                    </button>
-                    
                     <!-- User profile dropdown -->
                     {% if user.is_authenticated %}
                     <div class="dropdown">
@@ -547,62 +541,30 @@
             const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
             
             // Send timezone to server if not already set or different
-            const currentTimezone = localStorage.getItem('userTimezone');
-            if (currentTimezone !== timezone) {
-                localStorage.setItem('userTimezone', timezone);
+            const storedTimezone = "{{ request.session.user_timezone|default:'not-set' }}";
+            if (storedTimezone !== timezone) {
+                // Create a form and submit it to update timezone
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{% url "set_timezone" %}';
+                form.style.display = 'none';
                 
-                // Send timezone to server via fetch
-                fetch('{% url "set_timezone" %}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                    },
-                    body: 'timezone=' + encodeURIComponent(timezone)
-                }).then(response => {
-                    if (response.ok) {
-                        console.log('Timezone set successfully');
-                        // Reload the page to update timestamps
-                        if (window.location.pathname.includes('/chat/')) {
-                            window.location.reload();
-                        }
-                    }
-                });
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = '{{ csrf_token }}';
+                
+                const timezoneInput = document.createElement('input');
+                timezoneInput.type = 'hidden';
+                timezoneInput.name = 'timezone';
+                timezoneInput.value = timezone;
+                
+                form.appendChild(csrfInput);
+                form.appendChild(timezoneInput);
+                document.body.appendChild(form);
+                
+                form.submit();
             }
-        });
-    </script>
-
-    <!-- Dark Mode Toggle Functionality -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const themeToggle = document.getElementById('theme-toggle');
-            const darkIcon = document.getElementById('dark-icon');
-            const lightIcon = document.getElementById('light-icon');
-            
-            // Check for saved theme preference or default to light
-            const currentTheme = localStorage.getItem('theme') || 'light';
-            
-            // Apply the saved theme
-            if (currentTheme === 'dark') {
-                document.body.classList.add('dark');
-                darkIcon.classList.add('d-none');
-                lightIcon.classList.remove('d-none');
-            }
-            
-            // Toggle theme on button click
-            themeToggle.addEventListener('click', function() {
-                if (document.body.classList.contains('dark')) {
-                    document.body.classList.remove('dark');
-                    localStorage.setItem('theme', 'light');
-                    darkIcon.classList.remove('d-none');
-                    lightIcon.classList.add('d-none');
-                } else {
-                    document.body.classList.add('dark');
-                    localStorage.setItem('theme', 'dark');
-                    darkIcon.classList.add('d-none');
-                    lightIcon.classList.remove('d-none');
-                }
-            });
         });
     </script>
 </body>

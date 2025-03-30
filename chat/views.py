@@ -22,6 +22,7 @@ from django.db.utils import IntegrityError
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
+import pytz
 
 # Dictionary to store message queues for each chat room
 message_queues = {}
@@ -1064,8 +1065,37 @@ def set_timezone(request):
     """Set the user's timezone in the session"""
     timezone = request.POST.get('timezone')
     if timezone:
-        request.session['user_timezone'] = timezone
-    return HttpResponse(status=200)
+        try:
+            # Validate the timezone
+            pytz.timezone(timezone)
+            
+            # Save in session
+            request.session['user_timezone'] = timezone
+            
+            # If this is from the timezone setting form, show a success message
+            next_url = request.GET.get('next', 'home')
+            if request.headers.get('HTTP_REFERER') and 'set_timezone' in request.headers.get('HTTP_REFERER'):
+                messages.success(request, f"Timezone set to {timezone}")
+                
+            # Redirect back to the referring page or specified next URL
+            if request.headers.get('HTTP_REFERER') and not 'set_timezone' in request.headers.get('HTTP_REFERER'):
+                return redirect(request.headers.get('HTTP_REFERER'))
+            return redirect(next_url)
+            
+        except pytz.exceptions.UnknownTimeZoneError:
+            # Handle manual form submission with invalid timezone
+            if request.headers.get('HTTP_REFERER') and 'set_timezone' in request.headers.get('HTTP_REFERER'):
+                messages.error(request, f"Invalid timezone: {timezone}")
+                return redirect('set_timezone')
+            
+    # If we reach here with a GET request, show the timezone form
+    timezones = sorted(pytz.common_timezones)
+    current_timezone = request.session.get('user_timezone', 'UTC')
+    
+    return render(request, 'chat/set_timezone.html', {
+        'timezones': timezones,
+        'current_timezone': current_timezone,
+    })
 
 @login_required
 def initiate_voice_call(request, room_id):
