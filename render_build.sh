@@ -8,7 +8,21 @@ set -o nounset  # Exit on unset variable
 # Build the Python application
 pip install -r requirements.txt
 
-# Apply migrations (but this won't add the missing columns)
+echo "Running migrations in a way that handles existing tables..."
+
+# First apply migrations up to 0002
+python manage.py migrate auth
+python manage.py migrate contenttypes
+python manage.py migrate admin
+python manage.py migrate sessions
+python manage.py migrate chat 0002
+
+# Fake the problematic migration that's trying to create tables that already exist
+echo "Faking migration chat.0003_add_voice_call_model..."
+python manage.py migrate chat 0003 --fake
+
+# Continue with the rest of the migrations
+echo "Continuing with remaining migrations..."
 python manage.py migrate
 
 # Create a temporary script to fix the database
@@ -131,4 +145,6 @@ EOL
 python fix_db_script.py
 
 # Collect static files
-python manage.py collectstatic --noinput 
+python manage.py collectstatic --noinput
+
+echo "Build completed successfully!" 
