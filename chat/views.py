@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.http import JsonResponse, StreamingHttpResponse, HttpResponseForbidden, HttpResponseBadRequest, HttpResponseNotAllowed, HttpResponse
@@ -8,7 +8,7 @@ from django.contrib import messages
 import json, asyncio, time
 from datetime import datetime
 from channels.db import database_sync_to_async
-from .models import Profile, FriendRequest, Post, ChatRoom, Message, BlockedPost, PostReaction, Comment, CommentReaction, PostShare, Repost, FriendList, MessageReaction, VoiceCall, PostImage, PostVideo
+from .models import Profile, FriendRequest, Post, ChatRoom, Message, BlockedPost, PostReaction, Comment, CommentReaction, PostShare, Repost, FriendList, MessageReaction, VoiceCall, PostImage, PostVideo, ContentModerationStatus
 from .forms import ProfileForm, PostForm
 from django.db.models.functions import Now
 from django.db.models.signals import post_save
@@ -23,6 +23,9 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 import pytz
+import logging
+from django.db.models import F
+from django.db.models.functions import Concat
 
 # Dictionary to store message queues for each chat room
 message_queues = {}
@@ -36,6 +39,12 @@ REACTION_TYPES = [
     ('sad', '😢'),
     ('angry', '😡'),
 ]
+
+logger = logging.getLogger(__name__)
+
+# Function to check if user is staff or superuser
+def is_moderator(user):
+    return user.is_authenticated and (user.is_staff or user.is_superuser)
 
 def signup(request):
     if request.method == 'POST':
@@ -68,7 +77,19 @@ def home(request):
         Q(author=user_profile) | Q(author__in=friends)
     ).exclude(
         author__in=all_blocked_ids
-    ).select_related('author', 'author__user').prefetch_related(
+    )
+    
+    # Try to filter by moderation status, but don't break if fields don't exist
+    try:
+        posts = posts.exclude(
+            # Exclude posts that failed moderation (unless they belong to the current user)
+            ~Q(author=user_profile) & Q(is_moderated=True) & Q(moderation_passed=False)
+        )
+    except Exception as e:
+        logger.warning(f"Could not filter posts by moderation status: {str(e)}. Database may need migration.")
+    
+    # Select related fields and order by created_at
+    posts = posts.select_related('author', 'author__user').prefetch_related(
         'comments', 'comments__author', 'comments__author__user',
         'post_shares', 'reactions', 'repost_of', 'repost_of__original_post',
         'images', 'videos'  # Added prefetch for images and videos
@@ -846,28 +867,29 @@ def set_dark_mode(request):
 
 @login_required
 def get_comments(request, post_id):
-    """Get comments for a post with HTMX"""
+    """Get comments for a post"""
     post = get_object_or_404(Post, id=post_id)
-    user_profile = request.user.profile
     
-    print(f"[DEBUG] Fetching comments for post {post_id}, HTMX request: {request.headers.get('HX-Request', False)}")
+    # For staff/superusers, show all comments; for regular users, exclude hidden ones
+    if request.user.is_staff or request.user.is_superuser:
+        comments = Comment.objects.filter(post=post, parent_comment=None)
+    else:
+        comments = Comment.objects.filter(post=post, parent_comment=None, is_hidden=False)
+        
+    comments = comments.select_related('author', 'author__user').prefetch_related('reactions')
     
-    # Get all top-level comments for the post (no parent_comment)
-    comments = post.comments.filter(parent_comment=None).order_by('-created_at')
-    print(f"Found {comments.count()} top-level comments for post {post_id}")
-    
-    # Process user reaction info for each comment and its replies
+    # Add reaction info to each comment
     def add_reaction_info(comment_list):
+        """Add reaction information to comments"""
         for comment in comment_list:
             comment.user_has_reacted = CommentReaction.objects.filter(
                 comment=comment, 
-                user=user_profile
+                user=request.user.profile
             ).exists()
             
             # Also process all replies to this comment
             if hasattr(comment, 'replies'):
                 replies = comment.replies.all()
-                print(f"Comment {comment.id} has {replies.count()} replies")
                 add_reaction_info(replies)
     
     add_reaction_info(comments)
@@ -875,7 +897,7 @@ def get_comments(request, post_id):
     context = {
         'post': post,
         'comments': comments,
-        'user_profile': user_profile
+        'user_profile': request.user.profile
     }
     
     # Always render the comments list, whether HTMX or not
@@ -1244,3 +1266,255 @@ def get_active_call(request, room_id):
             })
     except ChatRoom.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Chat room does not exist'})
+
+# Moderation Dashboard
+@user_passes_test(is_moderator)
+def moderation_dashboard(request):
+    """Dashboard for content moderation"""
+    pending_items = ContentModerationStatus.objects.filter(status='pending').select_related('content_object')
+    approved_items = ContentModerationStatus.objects.filter(status='approved').select_related('content_object')
+    rejected_items = ContentModerationStatus.objects.filter(status='rejected').select_related('content_object')
+    error_items = ContentModerationStatus.objects.filter(status='error').select_related('content_object')
+    
+    # Add display name for content type
+    for queryset in [pending_items, approved_items, rejected_items, error_items]:
+        for item in queryset:
+            item.content_type_display = dict(ContentModerationStatus.CONTENT_TYPE_CHOICES).get(item.content_type, item.content_type)
+    
+    context = {
+        'pending_items': pending_items,
+        'pending_count': pending_items.count(),
+        'approved_items': approved_items,
+        'approved_count': approved_items.count(),
+        'rejected_items': rejected_items,
+        'rejected_count': rejected_items.count(),
+        'error_items': error_items,
+        'error_count': error_items.count(),
+    }
+    
+    return render(request, 'chat/moderation_dashboard.html', context)
+
+@user_passes_test(is_moderator)
+def approve_content(request, moderation_id):
+    """Approve content that was flagged for moderation"""
+    if request.method == 'POST':
+        try:
+            moderation = ContentModerationStatus.objects.get(id=moderation_id)
+            moderation.status = 'approved'
+            moderation.moderation_date = timezone.now()
+            moderation.save()
+            
+            # Update the object's moderation status based on content type
+            if moderation.content_type == 'post_image':
+                post_image = PostImage.objects.get(id=moderation.content_id)
+                post_image.is_moderated = True
+                post_image.moderation_passed = True
+                post_image.save()
+            elif moderation.content_type == 'post_video':
+                post_video = PostVideo.objects.get(id=moderation.content_id)
+                post_video.is_moderated = True
+                post_video.moderation_passed = True
+                post_video.save()
+            elif moderation.content_type == 'message_image':
+                message = Message.objects.get(id=moderation.content_id)
+                message.is_image_moderated = True
+                message.image_moderation_passed = True
+                message.save()
+            elif moderation.content_type == 'message_video':
+                message = Message.objects.get(id=moderation.content_id)
+                message.is_video_moderated = True
+                message.video_moderation_passed = True
+                message.save()
+            
+            messages.success(request, f"Content approved successfully.")
+        except Exception as e:
+            messages.error(request, f"Error approving content: {str(e)}")
+    
+    return redirect('moderation_dashboard')
+
+@user_passes_test(is_moderator)
+def reject_content(request, moderation_id):
+    """Reject content that was flagged for moderation"""
+    if request.method == 'POST':
+        try:
+            moderation = ContentModerationStatus.objects.get(id=moderation_id)
+            moderation.status = 'rejected'
+            moderation.moderation_date = timezone.now()
+            
+            if not moderation.rejection_reason:
+                moderation.rejection_reason = "Rejected by moderator"
+                
+            moderation.save()
+            
+            # Update the object's moderation status based on content type
+            if moderation.content_type == 'post_image':
+                post_image = PostImage.objects.get(id=moderation.content_id)
+                post_image.is_moderated = True
+                post_image.moderation_passed = False
+                post_image.save()
+                
+                # Update the parent post's moderation status
+                post = post_image.post
+                post.moderation_passed = False
+                post.is_moderated = True
+                post.save()
+                
+            elif moderation.content_type == 'post_video':
+                post_video = PostVideo.objects.get(id=moderation.content_id)
+                post_video.is_moderated = True
+                post_video.moderation_passed = False
+                post_video.save()
+                
+                # Update the parent post's moderation status
+                post = post_video.post
+                post.moderation_passed = False
+                post.is_moderated = True
+                post.save()
+                
+            elif moderation.content_type == 'message_image':
+                message = Message.objects.get(id=moderation.content_id)
+                message.is_image_moderated = True
+                message.image_moderation_passed = False
+                message.save()
+                
+            elif moderation.content_type == 'message_video':
+                message = Message.objects.get(id=moderation.content_id)
+                message.is_video_moderated = True
+                message.video_moderation_passed = False
+                message.save()
+            
+            messages.success(request, f"Content rejected successfully.")
+        except Exception as e:
+            messages.error(request, f"Error rejecting content: {str(e)}")
+    
+    return redirect('moderation_dashboard')
+
+@user_passes_test(is_moderator)
+def retry_moderation(request, moderation_id):
+    """Retry moderation for content that had errors"""
+    if request.method == 'POST':
+        try:
+            moderation = ContentModerationStatus.objects.get(id=moderation_id)
+            
+            # Get the content object based on type
+            content_object = None
+            if moderation.content_type == 'post_image':
+                content_object = PostImage.objects.get(id=moderation.content_id)
+                is_safe, confidence, categories = moderate_image(content_object.image)
+            elif moderation.content_type == 'post_video':
+                content_object = PostVideo.objects.get(id=moderation.content_id)
+                is_safe, confidence, categories = moderate_video(content_object.video)
+            elif moderation.content_type == 'message_image':
+                content_object = Message.objects.get(id=moderation.content_id)
+                is_safe, confidence, categories = moderate_image(content_object.image)
+            elif moderation.content_type == 'message_video':
+                content_object = Message.objects.get(id=moderation.content_id)
+                is_safe, confidence, categories = moderate_video(content_object.video)
+            
+            if content_object:
+                # Update moderation status
+                moderation.status = 'approved' if is_safe else 'rejected'
+                moderation.moderation_date = timezone.now()
+                moderation.rejection_reason = 'Inappropriate content detected' if not is_safe else None
+                moderation.moderation_data = categories
+                moderation.save()
+                
+                # Update the object's moderation status
+                if moderation.content_type == 'post_image':
+                    content_object.is_moderated = True
+                    content_object.moderation_passed = is_safe
+                    content_object.save()
+                    
+                    if not is_safe:
+                        post = content_object.post
+                        post.moderation_passed = False
+                        post.is_moderated = True
+                        post.save()
+                        
+                elif moderation.content_type == 'post_video':
+                    content_object.is_moderated = True
+                    content_object.moderation_passed = is_safe
+                    content_object.save()
+                    
+                    if not is_safe:
+                        post = content_object.post
+                        post.moderation_passed = False
+                        post.is_moderated = True
+                        post.save()
+                        
+                elif moderation.content_type == 'message_image':
+                    content_object.is_image_moderated = True
+                    content_object.image_moderation_passed = is_safe
+                    content_object.save()
+                    
+                elif moderation.content_type == 'message_video':
+                    content_object.is_video_moderated = True
+                    content_object.video_moderation_passed = is_safe
+                    content_object.save()
+                
+                messages.success(request, f"Content moderation retried successfully.")
+            else:
+                messages.error(request, f"Content not found.")
+                
+        except Exception as e:
+            messages.error(request, f"Error retrying moderation: {str(e)}")
+    
+    return redirect('moderation_dashboard')
+
+@user_passes_test(is_moderator)
+def reject_comment(request, comment_id):
+    """Reject a comment - mark as inappropriate"""
+    if request.method == 'POST':
+        try:
+            comment = Comment.objects.get(id=comment_id)
+            comment.is_hidden = True
+            comment.save()
+            
+            # Create moderation status entry
+            ContentModerationStatus.objects.create(
+                content_type='comment',
+                content_id=comment.id,
+                status='rejected',
+                moderation_date=timezone.now(),
+                rejection_reason='Rejected by moderator'
+            )
+            
+            messages.success(request, f"Comment by {comment.author.user.username} has been rejected.")
+        except Exception as e:
+            messages.error(request, f"Error rejecting comment: {str(e)}")
+    
+    # Return to the previous page
+    referer = request.META.get('HTTP_REFERER', 'home')
+    return redirect(referer)
+
+@user_passes_test(is_moderator)
+def accept_comment(request, comment_id):
+    """Approve a previously flagged comment"""
+    if request.method == 'POST':
+        try:
+            comment = Comment.objects.get(id=comment_id)
+            comment.is_hidden = False
+            comment.save()
+            
+            # Update moderation status if exists
+            moderation, created = ContentModerationStatus.objects.get_or_create(
+                content_type='comment',
+                content_id=comment.id,
+                defaults={
+                    'status': 'approved',
+                    'moderation_date': timezone.now()
+                }
+            )
+            
+            if not created:
+                moderation.status = 'approved'
+                moderation.moderation_date = timezone.now()
+                moderation.save()
+            
+            messages.success(request, f"Comment by {comment.author.user.username} has been approved.")
+        except Exception as e:
+            messages.error(request, f"Error approving comment: {str(e)}")
+    
+    # Return to the previous page
+    referer = request.META.get('HTTP_REFERER', 'home')
+    return redirect(referer)

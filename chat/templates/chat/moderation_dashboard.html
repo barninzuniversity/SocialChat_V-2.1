@@ -1,0 +1,333 @@
+{% extends 'chat/base.html' %}
+{% load static %}
+
+{% block title %}Moderation Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">Moderation Dashboard</h1>
+            
+            <ul class="nav nav-tabs mb-4" id="moderationTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending" type="button" role="tab" aria-controls="pending" aria-selected="true">
+                        Pending <span class="badge bg-warning">{{ pending_count }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="approved-tab" data-bs-toggle="tab" data-bs-target="#approved" type="button" role="tab" aria-controls="approved" aria-selected="false">
+                        Approved <span class="badge bg-success">{{ approved_count }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="rejected-tab" data-bs-toggle="tab" data-bs-target="#rejected" type="button" role="tab" aria-controls="rejected" aria-selected="false">
+                        Rejected <span class="badge bg-danger">{{ rejected_count }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="errors-tab" data-bs-toggle="tab" data-bs-target="#errors" type="button" role="tab" aria-controls="errors" aria-selected="false">
+                        Errors <span class="badge bg-secondary">{{ error_count }}</span>
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content" id="moderationTabsContent">
+                <!-- Pending Moderation Tab -->
+                <div class="tab-pane fade show active" id="pending" role="tabpanel" aria-labelledby="pending-tab">
+                    <div class="row">
+                        <div class="col-12">
+                            <h3>Content Pending Moderation</h3>
+                            {% if pending_items %}
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Type</th>
+                                                <th>Preview</th>
+                                                <th>Created</th>
+                                                <th>User</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in pending_items %}
+                                            <tr>
+                                                <td>{{ item.content_type_display }}</td>
+                                                <td>
+                                                    {% if item.content_type == 'post_image' %}
+                                                        <img src="{{ item.content_object.image.url }}" class="img-thumbnail" style="max-width: 100px;">
+                                                    {% elif item.content_type == 'post_video' %}
+                                                        <video width="100" controls>
+                                                            <source src="{{ item.content_object.video.url }}" type="video/mp4">
+                                                        </video>
+                                                    {% elif item.content_type == 'message_image' %}
+                                                        <img src="{{ item.content_object.image.url }}" class="img-thumbnail" style="max-width: 100px;">
+                                                    {% elif item.content_type == 'message_video' %}
+                                                        <video width="100" controls>
+                                                            <source src="{{ item.content_object.video.url }}" type="video/mp4">
+                                                        </video>
+                                                    {% elif item.content_type == 'avatar' %}
+                                                        <img src="{{ item.content_object.avatar.url }}" class="img-thumbnail rounded-circle" style="max-width: 100px;">
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ item.created_at }}</td>
+                                                <td>
+                                                    {% if item.content_type == 'post_image' %}
+                                                        {{ item.content_object.post.author.user.username }}
+                                                    {% elif item.content_type == 'post_video' %}
+                                                        {{ item.content_object.post.author.user.username }}
+                                                    {% elif item.content_type == 'message_image' or item.content_type == 'message_video' %}
+                                                        {{ item.content_object.sender.user.username }}
+                                                    {% elif item.content_type == 'avatar' %}
+                                                        {{ item.content_object.user.username }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <form method="post" action="{% url 'approve_content' item.id %}">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-sm btn-success me-2">
+                                                                <i class="bi bi-check-lg"></i> Approve
+                                                            </button>
+                                                        </form>
+                                                        <form method="post" action="{% url 'reject_content' item.id %}">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                                <i class="bi bi-x-lg"></i> Reject
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info">No pending content to moderate.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Approved Content Tab -->
+                <div class="tab-pane fade" id="approved" role="tabpanel" aria-labelledby="approved-tab">
+                    <div class="row">
+                        <div class="col-12">
+                            <h3>Approved Content</h3>
+                            {% if approved_items %}
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Type</th>
+                                                <th>Preview</th>
+                                                <th>Approved</th>
+                                                <th>User</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in approved_items %}
+                                            <tr>
+                                                <td>{{ item.content_type_display }}</td>
+                                                <td>
+                                                    {% if item.content_type == 'post_image' %}
+                                                        <img src="{{ item.content_object.image.url }}" class="img-thumbnail" style="max-width: 100px;">
+                                                    {% elif item.content_type == 'post_video' %}
+                                                        <video width="100" controls>
+                                                            <source src="{{ item.content_object.video.url }}" type="video/mp4">
+                                                        </video>
+                                                    {% elif item.content_type == 'message_image' %}
+                                                        <img src="{{ item.content_object.image.url }}" class="img-thumbnail" style="max-width: 100px;">
+                                                    {% elif item.content_type == 'message_video' %}
+                                                        <video width="100" controls>
+                                                            <source src="{{ item.content_object.video.url }}" type="video/mp4">
+                                                        </video>
+                                                    {% elif item.content_type == 'avatar' %}
+                                                        <img src="{{ item.content_object.avatar.url }}" class="img-thumbnail rounded-circle" style="max-width: 100px;">
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ item.moderation_date }}</td>
+                                                <td>
+                                                    {% if item.content_type == 'post_image' %}
+                                                        {{ item.content_object.post.author.user.username }}
+                                                    {% elif item.content_type == 'post_video' %}
+                                                        {{ item.content_object.post.author.user.username }}
+                                                    {% elif item.content_type == 'message_image' or item.content_type == 'message_video' %}
+                                                        {{ item.content_object.sender.user.username }}
+                                                    {% elif item.content_type == 'avatar' %}
+                                                        {{ item.content_object.user.username }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <form method="post" action="{% url 'reject_content' item.id %}">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-sm btn-warning">
+                                                            <i class="bi bi-arrow-counterclockwise"></i> Change to Rejected
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info">No approved content to display.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Rejected Content Tab -->
+                <div class="tab-pane fade" id="rejected" role="tabpanel" aria-labelledby="rejected-tab">
+                    <div class="row">
+                        <div class="col-12">
+                            <h3>Rejected Content</h3>
+                            {% if rejected_items %}
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Type</th>
+                                                <th>Preview</th>
+                                                <th>Rejected</th>
+                                                <th>User</th>
+                                                <th>Reason</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in rejected_items %}
+                                            <tr>
+                                                <td>{{ item.content_type_display }}</td>
+                                                <td>
+                                                    {% if item.content_type == 'post_image' %}
+                                                        <img src="{{ item.content_object.image.url }}" class="img-thumbnail" style="max-width: 100px;">
+                                                    {% elif item.content_type == 'post_video' %}
+                                                        <video width="100" controls>
+                                                            <source src="{{ item.content_object.video.url }}" type="video/mp4">
+                                                        </video>
+                                                    {% elif item.content_type == 'message_image' %}
+                                                        <img src="{{ item.content_object.image.url }}" class="img-thumbnail" style="max-width: 100px;">
+                                                    {% elif item.content_type == 'message_video' %}
+                                                        <video width="100" controls>
+                                                            <source src="{{ item.content_object.video.url }}" type="video/mp4">
+                                                        </video>
+                                                    {% elif item.content_type == 'avatar' %}
+                                                        <img src="{{ item.content_object.avatar.url }}" class="img-thumbnail rounded-circle" style="max-width: 100px;">
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ item.moderation_date }}</td>
+                                                <td>
+                                                    {% if item.content_type == 'post_image' %}
+                                                        {{ item.content_object.post.author.user.username }}
+                                                    {% elif item.content_type == 'post_video' %}
+                                                        {{ item.content_object.post.author.user.username }}
+                                                    {% elif item.content_type == 'message_image' or item.content_type == 'message_video' %}
+                                                        {{ item.content_object.sender.user.username }}
+                                                    {% elif item.content_type == 'avatar' %}
+                                                        {{ item.content_object.user.username }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ item.rejection_reason }}</td>
+                                                <td>
+                                                    <form method="post" action="{% url 'approve_content' item.id %}">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-sm btn-success">
+                                                            <i class="bi bi-arrow-counterclockwise"></i> Change to Approved
+                                                        </button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info">No rejected content to display.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Error Content Tab -->
+                <div class="tab-pane fade" id="errors" role="tabpanel" aria-labelledby="errors-tab">
+                    <div class="row">
+                        <div class="col-12">
+                            <h3>Content with Moderation Errors</h3>
+                            {% if error_items %}
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Type</th>
+                                                <th>ID</th>
+                                                <th>Created</th>
+                                                <th>Error</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in error_items %}
+                                            <tr>
+                                                <td>{{ item.content_type_display }}</td>
+                                                <td>{{ item.content_id }}</td>
+                                                <td>{{ item.created_at }}</td>
+                                                <td>{{ item.rejection_reason }}</td>
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <form method="post" action="{% url 'retry_moderation' item.id %}">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-sm btn-primary me-2">
+                                                                <i class="bi bi-arrow-repeat"></i> Retry
+                                                            </button>
+                                                        </form>
+                                                        <form method="post" action="{% url 'approve_content' item.id %}">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-sm btn-success me-2">
+                                                                <i class="bi bi-check-lg"></i> Approve
+                                                            </button>
+                                                        </form>
+                                                        <form method="post" action="{% url 'reject_content' item.id %}">
+                                                            {% csrf_token %}
+                                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                                <i class="bi bi-x-lg"></i> Reject
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info">No content with moderation errors.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const triggerTabList = document.querySelectorAll('#moderationTabs button')
+        triggerTabList.forEach(triggerEl => {
+            const tabTrigger = new bootstrap.Tab(triggerEl)
+            
+            triggerEl.addEventListener('click', event => {
+                event.preventDefault()
+                tabTrigger.show()
+            })
+        })
+    });
+</script>
+{% endblock %} 

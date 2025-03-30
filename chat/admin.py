@@ -17,24 +17,27 @@ class FriendRequestAdmin(admin.ModelAdmin):
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
-    list_display = ('author', 'content', 'created_at', 'is_moderated', 'moderation_status')
+    list_display = ('author', 'content', 'created_at', 'moderation_status')
     search_fields = ('author__user__username', 'content')
-    list_filter = ('created_at', 'is_moderated', 'moderation_passed')
+    list_filter = ('created_at',)
     
     def moderation_status(self, obj):
-        if not obj.is_moderated:
-            return format_html('<span style="color: orange;">Pending</span>')
-        elif obj.moderation_passed:
-            return format_html('<span style="color: green;">Approved</span>')
-        else:
-            return format_html('<span style="color: red;">Rejected</span>')
+        try:
+            if not obj.is_moderated:
+                return format_html('<span style="color: orange;">Pending</span>')
+            elif obj.moderation_passed:
+                return format_html('<span style="color: green;">Approved</span>')
+            else:
+                return format_html('<span style="color: red;">Rejected</span>')
+        except AttributeError:
+            return format_html('<span style="color: gray;">Migration Needed</span>')
     
     moderation_status.short_description = 'Moderation'
 
 @admin.register(PostImage)
 class PostImageAdmin(admin.ModelAdmin):
-    list_display = ('post', 'image_preview', 'created_at', 'is_moderated', 'moderation_status')
-    list_filter = ('is_moderated', 'moderation_passed', 'created_at')
+    list_display = ('post', 'image_preview', 'created_at', 'moderation_status')
+    list_filter = ('created_at',)
     search_fields = ('post__content', 'post__author__user__username')
     
     def image_preview(self, obj):
@@ -43,29 +46,35 @@ class PostImageAdmin(admin.ModelAdmin):
         return "No image"
     
     def moderation_status(self, obj):
-        if not obj.is_moderated:
-            return format_html('<span style="color: orange;">Pending</span>')
-        elif obj.moderation_passed:
-            return format_html('<span style="color: green;">Approved</span>')
-        else:
-            return format_html('<span style="color: red;">Rejected</span>')
+        try:
+            if not obj.is_moderated:
+                return format_html('<span style="color: orange;">Pending</span>')
+            elif obj.moderation_passed:
+                return format_html('<span style="color: green;">Approved</span>')
+            else:
+                return format_html('<span style="color: red;">Rejected</span>')
+        except AttributeError:
+            return format_html('<span style="color: gray;">Migration Needed</span>')
     
     image_preview.short_description = 'Image'
     moderation_status.short_description = 'Moderation'
 
 @admin.register(PostVideo)
 class PostVideoAdmin(admin.ModelAdmin):
-    list_display = ('post', 'video', 'created_at', 'is_moderated', 'moderation_status')
-    list_filter = ('is_moderated', 'moderation_passed', 'created_at')
+    list_display = ('post', 'video', 'created_at', 'moderation_status')
+    list_filter = ('created_at',)
     search_fields = ('post__content', 'post__author__user__username')
     
     def moderation_status(self, obj):
-        if not obj.is_moderated:
-            return format_html('<span style="color: orange;">Pending</span>')
-        elif obj.moderation_passed:
-            return format_html('<span style="color: green;">Approved</span>')
-        else:
-            return format_html('<span style="color: red;">Rejected</span>')
+        try:
+            if not obj.is_moderated:
+                return format_html('<span style="color: orange;">Pending</span>')
+            elif obj.moderation_passed:
+                return format_html('<span style="color: green;">Approved</span>')
+            else:
+                return format_html('<span style="color: red;">Rejected</span>')
+        except AttributeError:
+            return format_html('<span style="color: gray;">Migration Needed</span>')
     
     moderation_status.short_description = 'Moderation'
 
@@ -78,29 +87,31 @@ class ChatRoomAdmin(admin.ModelAdmin):
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
     list_display = ('sender', 'room', 'content', 'timestamp', 'is_read', 'moderation_status')
-    list_filter = ('is_read', 'timestamp', 'is_image_moderated', 'image_moderation_passed', 
-                  'is_video_moderated', 'video_moderation_passed')
+    list_filter = ('is_read', 'timestamp')
     search_fields = ('sender__user__username', 'content')
     
     def moderation_status(self, obj):
-        statuses = []
-        if obj.image:
-            if not obj.is_image_moderated:
-                statuses.append('Image: Pending')
-            elif obj.image_moderation_passed:
-                statuses.append('Image: ✓')
-            else:
-                statuses.append('Image: ✗')
+        try:
+            statuses = []
+            if obj.image:
+                if not obj.is_image_moderated:
+                    statuses.append('Image: Pending')
+                elif obj.image_moderation_passed:
+                    statuses.append('Image: ✓')
+                else:
+                    statuses.append('Image: ✗')
                 
-        if obj.video:
-            if not obj.is_video_moderated:
-                statuses.append('Video: Pending')
-            elif obj.video_moderation_passed:
-                statuses.append('Video: ✓')
-            else:
-                statuses.append('Video: ✗')
-                
-        return ', '.join(statuses) if statuses else 'No media'
+            if obj.video:
+                if not obj.is_video_moderated:
+                    statuses.append('Video: Pending')
+                elif obj.video_moderation_passed:
+                    statuses.append('Video: ✓')
+                else:
+                    statuses.append('Video: ✗')
+            
+            return ', '.join(statuses) if statuses else 'No media'
+        except AttributeError:
+            return format_html('<span style="color: gray;">Migration Needed</span>')
     
     moderation_status.short_description = 'Media Moderation'
 

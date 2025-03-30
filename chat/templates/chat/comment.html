@@ -14,7 +14,30 @@
                 {% endif %}
                 <p class="mb-0 text-dark">{{ comment.content }}</p>
             </div>
-            <small class="text-muted ms-2">{{ comment.created_at|timesince }}</small>
+            <div class="d-flex mt-2">
+                <small class="text-muted me-3">{{ comment.created_at|timesince }} ago</small>
+                <a href="#" class="reply-link btn-link me-3" data-comment-id="{{ comment.id }}">Reply</a>
+                {% if comment.author == user.profile %}
+                    <a href="#" class="delete-link btn-link" data-comment-id="{{ comment.id }}">Delete</a>
+                {% endif %}
+                {% if user.is_staff or user.is_superuser %}
+                    {% if comment.is_hidden %}
+                        <form method="post" action="{% url 'accept_comment' comment.id %}" class="ms-2">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-success p-0 px-1">
+                                <small>Approve</small>
+                            </button>
+                        </form>
+                    {% else %}
+                        <form method="post" action="{% url 'reject_comment' comment.id %}" class="ms-2">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-danger p-0 px-1">
+                                <small>Reject</small>
+                            </button>
+                        </form>
+                    {% endif %}
+                {% endif %}
+            </div>
         </div>
         
         <!-- Comment reactions -->
