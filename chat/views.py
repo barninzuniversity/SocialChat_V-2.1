@@ -68,9 +68,6 @@ def home(request):
         Q(author=user_profile) | Q(author__in=friends)
     ).exclude(
         author__in=all_blocked_ids
-    ).exclude(
-        # Exclude posts that failed moderation (unless they belong to the current user)
-        ~Q(author=user_profile) & Q(is_moderated=True) & Q(moderation_passed=False)
     ).select_related('author', 'author__user').prefetch_related(
         'comments', 'comments__author', 'comments__author__user',
         'post_shares', 'reactions', 'repost_of', 'repost_of__original_post',

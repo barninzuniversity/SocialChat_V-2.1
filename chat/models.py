@@ -5,6 +5,9 @@ from django.dispatch import receiver
 from django.utils import timezone
 import logging
 
+# Import needed for when moderation is enabled
+# from .content_moderation import moderate_image, moderate_video
+
 logger = logging.getLogger(__name__)
 
 def get_default_avatar_path():
@@ -255,178 +258,176 @@ class BlockedPost(models.Model):
     def __str__(self):
         return f"{self.user.user.username} blocked {self.post}"
 
-# Signals to handle content moderation
-from .content_moderation import moderate_image, moderate_video
+# Comment out the signal handlers for moderation until migration is applied
+# @receiver(post_save, sender=PostImage)
+# def moderate_post_image(sender, instance, created, **kwargs):
+#     """Moderate newly uploaded post images"""
+#     if created and instance.image:
+#         try:
+#             is_safe, confidence, categories = moderate_image(instance.image)
+#             
+#             # Create moderation status
+#             moderation = ContentModerationStatus.objects.create(
+#                 content_type='post_image',
+#                 content_id=instance.id,
+#                 status='approved' if is_safe else 'rejected',
+#                 moderation_date=timezone.now(),
+#                 rejection_reason='Inappropriate content detected' if not is_safe else None,
+#                 moderation_data=categories
+#             )
+#             
+#             # Update the image moderation status
+#             instance.is_moderated = True
+#             instance.moderation_passed = is_safe
+#             instance.save(update_fields=['is_moderated', 'moderation_passed'])
+#             
+#             # Update the post status if the image failed moderation
+#             if not is_safe:
+#                 post = instance.post
+#                 post.moderation_passed = False
+#                 post.is_moderated = True
+#                 post.save(update_fields=['is_moderated', 'moderation_passed'])
+#                 
+#                 # Create a blocked post entry for the admin
+#                 BlockedPost.objects.create(
+#                     user=Profile.objects.filter(user__is_superuser=True).first(),
+#                     post=post,
+#                     reason=f"Automatic block: Inappropriate image (score: {confidence})"
+#                 )
+#                 
+#                 logger.warning(f"Post {post.id} blocked due to inappropriate image content")
+#         
+#         except Exception as e:
+#             logger.error(f"Error processing image moderation for PostImage {instance.id}: {str(e)}")
+#             ContentModerationStatus.objects.create(
+#                 content_type='post_image',
+#                 content_id=instance.id,
+#                 status='error',
+#                 moderation_date=timezone.now(),
+#                 rejection_reason=str(e)[:50],
+#                 moderation_data={"error": str(e)}
+#             )
 
-@receiver(post_save, sender=PostImage)
-def moderate_post_image(sender, instance, created, **kwargs):
-    """Moderate newly uploaded post images"""
-    if created and instance.image:
-        try:
-            is_safe, confidence, categories = moderate_image(instance.image)
-            
-            # Create moderation status
-            moderation = ContentModerationStatus.objects.create(
-                content_type='post_image',
-                content_id=instance.id,
-                status='approved' if is_safe else 'rejected',
-                moderation_date=timezone.now(),
-                rejection_reason='Inappropriate content detected' if not is_safe else None,
-                moderation_data=categories
-            )
-            
-            # Update the image moderation status
-            instance.is_moderated = True
-            instance.moderation_passed = is_safe
-            instance.save(update_fields=['is_moderated', 'moderation_passed'])
-            
-            # Update the post status if the image failed moderation
-            if not is_safe:
-                post = instance.post
-                post.moderation_passed = False
-                post.is_moderated = True
-                post.save(update_fields=['is_moderated', 'moderation_passed'])
-                
-                # Create a blocked post entry for the admin
-                BlockedPost.objects.create(
-                    user=Profile.objects.filter(user__is_superuser=True).first(),
-                    post=post,
-                    reason=f"Automatic block: Inappropriate image (score: {confidence})"
-                )
-                
-                logger.warning(f"Post {post.id} blocked due to inappropriate image content")
-        
-        except Exception as e:
-            logger.error(f"Error processing image moderation for PostImage {instance.id}: {str(e)}")
-            ContentModerationStatus.objects.create(
-                content_type='post_image',
-                content_id=instance.id,
-                status='error',
-                moderation_date=timezone.now(),
-                rejection_reason=str(e)[:50],
-                moderation_data={"error": str(e)}
-            )
+# @receiver(post_save, sender=PostVideo)
+# def moderate_post_video(sender, instance, created, **kwargs):
+#     """Moderate newly uploaded post videos"""
+#     if created and instance.video:
+#         try:
+#             is_safe, confidence, categories = moderate_video(instance.video)
+#             
+#             # Create moderation status
+#             moderation = ContentModerationStatus.objects.create(
+#                 content_type='post_video',
+#                 content_id=instance.id,
+#                 status='approved' if is_safe else 'rejected',
+#                 moderation_date=timezone.now(),
+#                 rejection_reason='Inappropriate content detected' if not is_safe else None,
+#                 moderation_data=categories
+#             )
+#             
+#             # Update the video moderation status
+#             instance.is_moderated = True
+#             instance.moderation_passed = is_safe
+#             instance.save(update_fields=['is_moderated', 'moderation_passed'])
+#             
+#             # Update the post status if the video failed moderation
+#             if not is_safe:
+#                 post = instance.post
+#                 post.moderation_passed = False
+#                 post.is_moderated = True
+#                 post.save(update_fields=['is_moderated', 'moderation_passed'])
+#                 
+#                 # Create a blocked post entry for the admin
+#                 BlockedPost.objects.create(
+#                     user=Profile.objects.filter(user__is_superuser=True).first(),
+#                     post=post,
+#                     reason=f"Automatic block: Inappropriate video (score: {confidence})"
+#                 )
+#                 
+#                 logger.warning(f"Post {post.id} blocked due to inappropriate video content")
+#         
+#         except Exception as e:
+#             logger.error(f"Error processing video moderation for PostVideo {instance.id}: {str(e)}")
+#             ContentModerationStatus.objects.create(
+#                 content_type='post_video',
+#                 content_id=instance.id,
+#                 status='error',
+#                 moderation_date=timezone.now(),
+#                 rejection_reason=str(e)[:50],
+#                 moderation_data={"error": str(e)}
+#             )
 
-@receiver(post_save, sender=PostVideo)
-def moderate_post_video(sender, instance, created, **kwargs):
-    """Moderate newly uploaded post videos"""
-    if created and instance.video:
-        try:
-            is_safe, confidence, categories = moderate_video(instance.video)
-            
-            # Create moderation status
-            moderation = ContentModerationStatus.objects.create(
-                content_type='post_video',
-                content_id=instance.id,
-                status='approved' if is_safe else 'rejected',
-                moderation_date=timezone.now(),
-                rejection_reason='Inappropriate content detected' if not is_safe else None,
-                moderation_data=categories
-            )
-            
-            # Update the video moderation status
-            instance.is_moderated = True
-            instance.moderation_passed = is_safe
-            instance.save(update_fields=['is_moderated', 'moderation_passed'])
-            
-            # Update the post status if the video failed moderation
-            if not is_safe:
-                post = instance.post
-                post.moderation_passed = False
-                post.is_moderated = True
-                post.save(update_fields=['is_moderated', 'moderation_passed'])
-                
-                # Create a blocked post entry for the admin
-                BlockedPost.objects.create(
-                    user=Profile.objects.filter(user__is_superuser=True).first(),
-                    post=post,
-                    reason=f"Automatic block: Inappropriate video (score: {confidence})"
-                )
-                
-                logger.warning(f"Post {post.id} blocked due to inappropriate video content")
-        
-        except Exception as e:
-            logger.error(f"Error processing video moderation for PostVideo {instance.id}: {str(e)}")
-            ContentModerationStatus.objects.create(
-                content_type='post_video',
-                content_id=instance.id,
-                status='error',
-                moderation_date=timezone.now(),
-                rejection_reason=str(e)[:50],
-                moderation_data={"error": str(e)}
-            )
-
-@receiver(post_save, sender=Message)
-def moderate_message_media(sender, instance, created, **kwargs):
-    """Moderate media in messages"""
-    if created:
-        # Check for image
-        if instance.image:
-            try:
-                is_safe, confidence, categories = moderate_image(instance.image)
-                
-                # Create moderation status
-                ContentModerationStatus.objects.create(
-                    content_type='message_image',
-                    content_id=instance.id,
-                    status='approved' if is_safe else 'rejected',
-                    moderation_date=timezone.now(),
-                    rejection_reason='Inappropriate content detected' if not is_safe else None,
-                    moderation_data=categories
-                )
-                
-                # Update message status
-                instance.is_image_moderated = True
-                instance.image_moderation_passed = is_safe
-                instance.save(update_fields=['is_image_moderated', 'image_moderation_passed'])
-                
-                if not is_safe:
-                    logger.warning(f"Message {instance.id} contained inappropriate image")
-            
-            except Exception as e:
-                logger.error(f"Error processing image moderation for Message {instance.id}: {str(e)}")
-                ContentModerationStatus.objects.create(
-                    content_type='message_image',
-                    content_id=instance.id,
-                    status='error',
-                    moderation_date=timezone.now(),
-                    rejection_reason=str(e)[:50],
-                    moderation_data={"error": str(e)}
-                )
-        
-        # Check for video
-        if instance.video:
-            try:
-                is_safe, confidence, categories = moderate_video(instance.video)
-                
-                # Create moderation status
-                ContentModerationStatus.objects.create(
-                    content_type='message_video',
-                    content_id=instance.id,
-                    status='approved' if is_safe else 'rejected',
-                    moderation_date=timezone.now(),
-                    rejection_reason='Inappropriate content detected' if not is_safe else None,
-                    moderation_data=categories
-                )
-                
-                # Update message status
-                instance.is_video_moderated = True
-                instance.video_moderation_passed = is_safe
-                instance.save(update_fields=['is_video_moderated', 'video_moderation_passed'])
-                
-                if not is_safe:
-                    logger.warning(f"Message {instance.id} contained inappropriate video")
-            
-            except Exception as e:
-                logger.error(f"Error processing video moderation for Message {instance.id}: {str(e)}")
-                ContentModerationStatus.objects.create(
-                    content_type='message_video',
-                    content_id=instance.id,
-                    status='error',
-                    moderation_date=timezone.now(),
-                    rejection_reason=str(e)[:50],
-                    moderation_data={"error": str(e)}
-                )
+# @receiver(post_save, sender=Message)
+# def moderate_message_media(sender, instance, created, **kwargs):
+#     """Moderate media in messages"""
+#     if created:
+#         # Check for image
+#         if instance.image:
+#             try:
+#                 is_safe, confidence, categories = moderate_image(instance.image)
+#                 
+#                 # Create moderation status
+#                 ContentModerationStatus.objects.create(
+#                     content_type='message_image',
+#                     content_id=instance.id,
+#                     status='approved' if is_safe else 'rejected',
+#                     moderation_date=timezone.now(),
+#                     rejection_reason='Inappropriate content detected' if not is_safe else None,
+#                     moderation_data=categories
+#                 )
+#                 
+#                 # Update message status
+#                 instance.is_image_moderated = True
+#                 instance.image_moderation_passed = is_safe
+#                 instance.save(update_fields=['is_image_moderated', 'image_moderation_passed'])
+#                 
+#                 if not is_safe:
+#                     logger.warning(f"Message {instance.id} contained inappropriate image")
+#             
+#             except Exception as e:
+#                 logger.error(f"Error processing image moderation for Message {instance.id}: {str(e)}")
+#                 ContentModerationStatus.objects.create(
+#                     content_type='message_image',
+#                     content_id=instance.id,
+#                     status='error',
+#                     moderation_date=timezone.now(),
+#                     rejection_reason=str(e)[:50],
+#                     moderation_data={"error": str(e)}
+#                 )
+#         
+#         # Check for video
+#         if instance.video:
+#             try:
+#                 is_safe, confidence, categories = moderate_video(instance.video)
+#                 
+#                 # Create moderation status
+#                 ContentModerationStatus.objects.create(
+#                     content_type='message_video',
+#                     content_id=instance.id,
+#                     status='approved' if is_safe else 'rejected',
+#                     moderation_date=timezone.now(),
+#                     rejection_reason='Inappropriate content detected' if not is_safe else None,
+#                     moderation_data=categories
+#                 )
+#                 
+#                 # Update message status
+#                 instance.is_video_moderated = True
+#                 instance.video_moderation_passed = is_safe
+#                 instance.save(update_fields=['is_video_moderated', 'video_moderation_passed'])
+#                 
+#                 if not is_safe:
+#                     logger.warning(f"Message {instance.id} contained inappropriate video")
+#             
+#             except Exception as e:
+#                 logger.error(f"Error processing video moderation for Message {instance.id}: {str(e)}")
+#                 ContentModerationStatus.objects.create(
+#                     content_type='message_video',
+#                     content_id=instance.id,
+#                     status='error',
+#                     moderation_date=timezone.now(),
+#                     rejection_reason=str(e)[:50],
+#                     moderation_data={"error": str(e)}
+#                 )
 
 # Continue with your existing models...
 class FriendList(models.Model):
