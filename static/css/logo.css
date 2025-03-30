@@ -1,0 +1,265 @@
+/* SocialChat Logo Styling */
+.socialchat-logo {
+  font-family: 'Grand Hotel', cursive, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 1.8rem;
+  color: #262626;
+  text-decoration: none;
+  position: relative;
+  display: inline-block;
+  transition: color 0.3s ease;
+  margin-left: 8px;
+  line-height: 1;
+}
+
+.socialchat-logo:hover {
+  color: #4F46E5;
+  text-decoration: none;
+}
+
+.socialchat-logo-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(45deg, #4F46E5, #818CF8);
+  color: white;
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+.socialchat-logo-container {
+  display: flex;
+  align-items: center;
+}
+
+/* Splash Screen */
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.5s ease-out;
+}
+
+.splash-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.splash-icon {
+  background: linear-gradient(45deg, #4F46E5, #818CF8);
+  border-radius: 16px;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 40px;
+  margin-bottom: 15px;
+  animation: pulse 1.5s infinite;
+}
+
+.splash-text {
+  font-family: 'Grand Hotel', cursive, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 3rem;
+  color: #262626;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(79, 70, 229, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+  }
+}
+
+/* Dark Mode Support */
+.dark-mode .socialchat-logo {
+  color: #f1f1f1;
+}
+
+body.dark-mode .socialchat-logo {
+  color: #f1f1f1;
+}
+
+.dark-mode .splash-screen {
+  background-color: #121212;
+}
+
+body.dark-mode .splash-screen {
+  background-color: #121212;
+}
+
+.dark-mode .splash-text {
+  color: #f1f1f1;
+}
+
+body.dark-mode .splash-text {
+  color: #f1f1f1;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .socialchat-logo {
+    font-size: 1.5rem;
+  }
+  
+  .socialchat-logo-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+  
+  .splash-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 30px;
+  }
+  
+  .splash-text {
+    font-size: 2.5rem;
+  }
+}
+
+/* Loading Animation */
+.content-loader {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 20px 0;
+}
+
+.htmx-request .content-loader {
+    display: flex;
+}
+
+.loader-dots {
+    display: flex;
+    align-items: center;
+}
+
+.loader-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #4F46E5;
+    margin: 0 5px;
+    animation: loader-bounce 1.4s infinite ease-in-out both;
+}
+
+.loader-dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.loader-dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes loader-bounce {
+    0%, 80%, 100% {
+        transform: scale(0);
+    }
+    40% {
+        transform: scale(1);
+    }
+}
+
+/* Voice Message UI */
+.voice-message-container {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    background-color: rgba(79, 70, 229, 0.1);
+    border-radius: 16px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    width: 100%;
+}
+
+.voice-player {
+    width: 100%;
+    height: 36px;
+    outline: none;
+}
+
+.voice-message-info {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 5px;
+    text-align: center;
+}
+
+/* Voice Call UI */
+.voice-call-button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #4F46E5;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.voice-call-button:hover {
+    background-color: #3730a3;
+    transform: scale(1.05);
+}
+
+.voice-call-active {
+    background-color: #10B981;
+}
+
+.call-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.call-timer {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+.recording-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background-color: rgba(239, 68, 68, 0.1);
+    border-radius: 20px;
+    color: #EF4444;
+}
+
+.recording-pulse {
+    animation: recording-pulse 1.5s infinite;
+}
+
+@keyframes recording-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+} 

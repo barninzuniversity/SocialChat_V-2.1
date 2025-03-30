@@ -1,0 +1,1 @@
+web: python manage.py migrate sessions --noinput && python manage.py migrate auth --noinput && python manage.py migrate admin --noinput && python manage.py migrate contenttypes --noinput && daphne -b 0.0.0.0 -p $PORT chat_project.asgi:application

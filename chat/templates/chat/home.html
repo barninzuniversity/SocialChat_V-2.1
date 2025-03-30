@@ -1,0 +1,958 @@
+{% extends 'chat/base.html' %}
+{% load chat_extras %}
+
+{% block title %}Home | SocialChat{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Left sidebar - Friend requests -->
+    <div class="col-md-3">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Friend Requests</h5>
+            </div>
+            <div class="card-body">
+                {% if friend_requests %}
+                    {% for request in friend_requests %}
+                    <div class="friend-request">
+                        <div class="d-flex align-items-center mb-2">
+                            <img src="{{ request.from_user.avatar.url }}" alt="{{ request.from_user.user.username }}" class="profile-avatar-sm me-2">
+                            <a href="{% url 'profile_detail' request.from_user.user.username %}">
+                                {{ request.from_user.user.username }}
+                            </a>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'respond_friend_request' request.id 'accept' %}" class="btn btn-sm btn-success">Accept</a>
+                            <a href="{% url 'respond_friend_request' request.id 'reject' %}" class="btn btn-sm btn-secondary">Reject</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="mb-0 text-muted">No pending friend requests</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Center - Feed -->
+    <div class="col-md-6">
+        <!-- Create Post -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Create a Post</h5>
+                <form method="post" action="{% url 'home' %}" enctype="multipart/form-data" id="post-form">
+                    {% csrf_token %}
+                    {{ form.content }}
+                    
+                    <div class="mt-3">
+                        <h6>Upload Media</h6>
+                        <div class="upload-area" id="upload-area">
+                            <input type="file" name="images" id="id_images" class="file-input" accept="image/*" style="display: none;" multiple>
+                            <input type="file" name="videos" id="id_videos" class="file-input" accept="video/*" style="display: none;" multiple>
+                            <div class="upload-drop-zone" id="upload-drop-zone">
+                                <i class="fas fa-cloud-upload-alt mb-2" style="font-size: 2rem;"></i>
+                                <p class="mb-0">Drag & drop files here or click to browse</p>
+                                <p class="small text-muted">You can select multiple images and videos</p>
+                            </div>
+                            <div id="preview-container" class="mt-2 d-none">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="mb-0">Selected Media</h6>
+                                    <button type="button" class="btn btn-sm btn-danger" id="remove-all-files">
+                                        <i class="fas fa-times"></i> Clear All
+                                    </button>
+                                </div>
+                                <div id="files-preview-container" class="d-flex flex-wrap gap-2">
+                                    <!-- File previews will be inserted here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary mt-3">Post</button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Posts Feed -->
+        {% if posts %}
+            {% for post in posts %}
+            <div class="card mb-3" data-post-id="{{ post.id }}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center">
+                            <img src="{{ post.author.avatar.url }}" alt="{{ post.author.user.username }}" class="profile-avatar-sm me-2">
+                            <div>
+                                <a href="{% url 'profile_detail' post.author.user.username %}" class="text-decoration-none fw-bold">
+                                    {{ post.author.user.username }}
+                                </a>
+                                <div class="text-muted small">{{ post.created_at|to_user_timezone:request.session.user_timezone }}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light" type="button" id="dropdownMenuButton-{{ post.id }}" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton-{{ post.id }}">
+                                {% if post.author.user == user %}
+                                <li>
+                                    <button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deletePostModal-{{ post.id }}">
+                                        <i class="fas fa-trash-alt me-2"></i> Delete Post
+                                    </button>
+                                </li>
+                                {% else %}
+                                <li>
+                                    <a href="{% url 'block_post' post.id %}" class="dropdown-item text-warning">
+                                        <i class="fas fa-ban me-2"></i> Block Post
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'block_user' post.author.user.username %}" class="dropdown-item text-warning">
+                                        <i class="fas fa-user-slash me-2"></i> Block {{ post.author.user.username }}
+                                    </a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Check if this is a shared post -->
+                    {% for shared in post.post_shares.all %}
+                        {% if shared.shared_with == user.profile %}
+                            <div class="shared-content mb-3 p-2 bg-light rounded">
+                                <div class="d-flex align-items-center mb-2">
+                                    <img src="{{ shared.shared_by.avatar.url }}" alt="{{ shared.shared_by.user.username }}" class="profile-avatar-sm me-2">
+                                    <div>
+                                        <span class="fw-bold">{{ shared.shared_by.user.username }}</span> shared this post with you
+                                        <div class="small text-muted">{{ shared.created_at|to_user_timezone:request.session.user_timezone }}</div>
+                                    </div>
+                                </div>
+                                {% if shared.comment %}
+                                    <div class="shared-comment mb-2 border-start border-3 ps-2">
+                                        {{ shared.comment }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% with repost=post.repost_of.first %}
+                        {% if repost %}
+                            <div class="reposted-by mb-3">
+                                <p class="small text-muted mb-1">
+                                    <i class="fas fa-retweet me-1"></i> Reposted by {{ post.author.user.username }}
+                                </p>
+                            </div>
+                            {% with original_post=repost.original_post %}
+                                {% include 'chat/repost_content.html' with post=post original_post=original_post %}
+                            {% endwith %}
+                        {% else %}
+                            <p class="card-text">{{ post.content }}</p>
+                            
+                            <!-- Display multiple images -->
+                            {% if post.images.all %}
+                            <div class="mt-2 mb-3 post-media-gallery">
+                                <div class="row g-2">
+                                    {% for image in post.images.all %}
+                                        <div class="col-{% if post.images.count == 1 %}12{% elif post.images.count == 2 %}6{% else %}4{% endif %} {% if forloop.counter > 4 and post.images.count > 5 %}d-none{% endif %}">
+                                            <div class="position-relative h-100">
+                                                <img src="{{ image.image.url }}" alt="Post image" class="img-fluid rounded h-100 w-100 object-fit-cover post-image" 
+                                                     data-post-id="{{ post.id }}" 
+                                                     data-image-id="{{ image.id }}" 
+                                                     data-image-url="{{ image.image.url }}" 
+                                                     data-image-index="{{ forloop.counter0 }}"
+                                                     style="cursor: pointer;">
+                                                {% if forloop.counter == 5 and post.images.count > 5 %}
+                                                    <div class="more-overlay">
+                                                        <span>+{{ post.images.count|add:"-4" }}</span>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Display multiple videos -->
+                            {% if post.videos.all %}
+                            <div class="mt-2 mb-3 post-media-gallery">
+                                <div class="row g-2">
+                                    {% for video in post.videos.all %}
+                                        <div class="col-{% if post.videos.count == 1 %}12{% elif post.videos.count == 2 %}6{% else %}4{% endif %} {% if forloop.counter > 4 and post.videos.count > 5 %}d-none{% endif %}">
+                                            <div class="position-relative h-100">
+                                                <video controls class="rounded h-100 w-100 object-fit-cover">
+                                                    <source src="{{ video.video.url }}" type="video/mp4">
+                                                    Your browser does not support the video tag.
+                                                </video>
+                                                {% if forloop.counter == 5 and post.videos.count > 5 %}
+                                                    <div class="more-overlay">
+                                                        <span>+{{ post.videos.count|add:"-4" }}</span>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <!-- Post Actions -->
+                    <div class="post-actions border-top pt-3 mt-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <!-- Reactions count -->
+                            <div class="reactions-count" data-post-id="{{ post.id }}">
+                                {% with reaction_count=post.reactions.count %}
+                                    {% if reaction_count > 0 %}
+                                        <span class="reactions-badge">
+                                            <i class="fas fa-thumbs-up text-primary"></i>
+                                            <span class="ms-1">{{ reaction_count }}</span>
+                                        </span>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                            
+                            <!-- Comments and shares count -->
+                            <div class="comments-shares-count">
+                                {% with comments_count=post.comments.count shares_count=post.post_shares.count %}
+                                    {% if comments_count > 0 %}
+                                        <span class="small text-muted me-2 comments-count" data-post-id="{{ post.id }}">{{ comments_count }} comment{{ comments_count|pluralize }}</span>
+                                    {% endif %}
+                                    {% if shares_count > 0 %}
+                                        <span class="small text-muted">{{ shares_count }} share{{ shares_count|pluralize }}</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                        </div>
+                        
+                        <!-- Action buttons -->
+                        <div class="d-flex justify-content-between">
+                            <div class="btn-group reaction-btn-group" role="group">
+                                <button type="button" class="btn btn-light rounded-pill reaction-btn {% if user_reaction %}active{% endif %}" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="{% if user_reaction %}fas text-primary{% else %}far{% endif %} fa-thumbs-up me-1"></i> 
+                                    {% if user_reaction %}
+                                        {{ user_reaction.reaction_type|title }}
+                                    {% else %}
+                                        Like
+                                    {% endif %}
+                                </button>
+                                <div class="dropdown-menu reactions-dropdown p-1">
+                                    <div class="d-flex">
+                                        <button type="button" class="btn btn-reaction" data-reaction="like" data-post="{{ post.id }}"
+                                                hx-post="{% url 'add_post_reaction' post.id %}" 
+                                                hx-vals='{"reaction_type": "like"}'
+                                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' 
+                                                hx-swap="none">
+                                            <span class="reaction-emoji">👍</span>
+                                            <span class="reaction-text">Like</span>
+                                        </button>
+                                        <button type="button" class="btn btn-reaction" data-reaction="love" data-post="{{ post.id }}"
+                                                hx-post="{% url 'add_post_reaction' post.id %}" 
+                                                hx-vals='{"reaction_type": "love"}'
+                                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' 
+                                                hx-swap="none">
+                                            <span class="reaction-emoji">❤️</span>
+                                            <span class="reaction-text">Love</span>
+                                        </button>
+                                        <button type="button" class="btn btn-reaction" data-reaction="haha" data-post="{{ post.id }}"
+                                                hx-post="{% url 'add_post_reaction' post.id %}" 
+                                                hx-vals='{"reaction_type": "haha"}'
+                                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' 
+                                                hx-swap="none">
+                                            <span class="reaction-emoji">😂</span>
+                                            <span class="reaction-text">Haha</span>
+                                        </button>
+                                        <button type="button" class="btn btn-reaction" data-reaction="wow" data-post="{{ post.id }}"
+                                                hx-post="{% url 'add_post_reaction' post.id %}" 
+                                                hx-vals='{"reaction_type": "wow"}'
+                                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' 
+                                                hx-swap="none">
+                                            <span class="reaction-emoji">😮</span>
+                                            <span class="reaction-text">Wow</span>
+                                        </button>
+                                        <button type="button" class="btn btn-reaction" data-reaction="sad" data-post="{{ post.id }}"
+                                                hx-post="{% url 'add_post_reaction' post.id %}" 
+                                                hx-vals='{"reaction_type": "sad"}'
+                                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' 
+                                                hx-swap="none">
+                                            <span class="reaction-emoji">😢</span>
+                                            <span class="reaction-text">Sad</span>
+                                        </button>
+                                        <button type="button" class="btn btn-reaction" data-reaction="angry" data-post="{{ post.id }}"
+                                                hx-post="{% url 'add_post_reaction' post.id %}" 
+                                                hx-vals='{"reaction_type": "angry"}'
+                                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' 
+                                                hx-swap="none">
+                                            <span class="reaction-emoji">😡</span>
+                                            <span class="reaction-text">Angry</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-light rounded-pill comment-toggle-btn" data-bs-toggle="collapse" data-bs-target="#commentSection-{{ post.id }}" 
+                                    hx-trigger="shown.bs.collapse from:this">
+                                <i class="far fa-comment me-1"></i> Comment
+                            </button>
+                            <a href="{% url 'repost' post.id %}" class="btn btn-light rounded-pill repost-btn">
+                                <i class="fas fa-retweet me-1"></i> Repost
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Comments Section (Collapsed by default) -->
+                    <div class="collapse mt-3" id="commentSection-{{ post.id }}">
+                        <div class="card card-body bg-light p-2">
+                            <!-- Comment Form -->
+                            <div class="d-flex mb-2">
+                                <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" class="profile-avatar-sm me-2">
+                                <div class="flex-grow-1">
+                                    <form class="comment-form" 
+                                          data-post-id="{{ post.id }}"
+                                          hx-post="{% url 'add_comment' post.id %}"
+                                          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' 
+                                          hx-target="#commentsList-{{ post.id }}"
+                                          hx-swap="innerHTML">
+                                        {% csrf_token %}
+                                        <div class="input-group">
+                                            <input type="text" class="form-control bg-white rounded-pill" 
+                                                   placeholder="Write a comment..." 
+                                                   name="content" 
+                                                   autocomplete="off"
+                                                   required>
+                                            <button type="submit" class="btn btn-primary rounded-circle ms-2">
+                                                <i class="fas fa-paper-plane"></i>
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            
+                            <!-- Comments List -->
+                            <div id="commentsList-{{ post.id }}" 
+                                 class="comments-list"
+                                 hx-get="{% url 'get_comments' post.id %}"
+                                 hx-target="this"
+                                 hx-trigger="revealed delay:300ms, audio-ready from:body"
+                                 hx-indicator=".comments-spinner-{{ post.id }}"
+                                 hx-swap="innerHTML">
+                                <div class="text-center my-2 comments-spinner-{{ post.id }}">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading comments...</span>
+                                    </div>
+                                    <span class="ms-1 small">Loading comments...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Delete Post Modal -->
+            {% if post.author.user == user %}
+            <div class="modal fade" id="deletePostModal-{{ post.id }}" tabindex="-1" aria-labelledby="deletePostModalLabel-{{ post.id }}" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="deletePostModalLabel-{{ post.id }}">Delete Post</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Are you sure you want to delete this post? This action cannot be undone.</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <form action="{% url 'delete_post' post.id %}" method="POST">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                No posts to show. Add some friends or create a post!
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Right sidebar - Suggestions -->
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Links</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <a href="{% url 'friends_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-user-friends me-2"></i> View All Friends
+                    </a>
+                    <a href="{% url 'search_users' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-search me-2"></i> Find New Friends
+                    </a>
+                    <a href="{% url 'chat_list' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-comments me-2"></i> Chat Messages
+                    </a>
+                    <a href="{% url 'profile_detail' user.username %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-user me-2"></i> My Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const uploadArea = document.getElementById('upload-area');
+        const dropZone = document.getElementById('upload-drop-zone');
+        const imageInput = document.getElementById('id_images');
+        const videoInput = document.getElementById('id_videos');
+        const previewContainer = document.getElementById('preview-container');
+        const filesPreviewContainer = document.getElementById('files-preview-container');
+        const removeAllFilesBtn = document.getElementById('remove-all-files');
+        
+        // Arrays to track selected files
+        let selectedImages = [];
+        let selectedVideos = [];
+        
+        // Click on dropzone to browse files
+        dropZone.addEventListener('click', function() {
+            // Default to image upload when clicking
+            imageInput.click();
+        });
+        
+        // Handle drag and drop events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        // Add visual feedback when dragging over
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, function() {
+                dropZone.classList.add('dragover');
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, function() {
+                dropZone.classList.remove('dragover');
+            }, false);
+        });
+        
+        // Handle dropped files
+        dropZone.addEventListener('drop', function(e) {
+            const files = e.dataTransfer.files;
+            if (files.length === 0) return;
+            
+            // Process each dropped file
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                if (file.type.startsWith('image/')) {
+                    // Add to images
+                    addFile(file, 'image');
+                } else if (file.type.startsWith('video/')) {
+                    // Add to videos
+                    addFile(file, 'video');
+                } else {
+                    alert(`File "${file.name}" is not a supported image or video format.`);
+                }
+            }
+            
+            updateFileInputs();
+        });
+        
+        // Handle chosen files from browse dialog for images
+        imageInput.addEventListener('change', function() {
+            if (this.files.length) {
+                // Add all selected files to our collection
+                for (let i = 0; i < this.files.length; i++) {
+                    addFile(this.files[i], 'image');
+                }
+                // Reset the input so the change event fires even if selecting the same file again
+                this.value = '';
+                updateFileInputs();
+            }
+        });
+        
+        // Handle chosen files from browse dialog for videos
+        videoInput.addEventListener('change', function() {
+            if (this.files.length) {
+                // Add all selected files to our collection
+                for (let i = 0; i < this.files.length; i++) {
+                    addFile(this.files[i], 'video');
+                }
+                // Reset the input so the change event fires even if selecting the same file again
+                this.value = '';
+                updateFileInputs();
+            }
+        });
+        
+        // Add a file to our collection and create its preview
+        function addFile(file, type) {
+            // Generate a unique ID for this file
+            const fileId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            file.fileId = fileId;
+            
+            // Add to appropriate array
+            if (type === 'image') {
+                selectedImages.push(file);
+            } else {
+                selectedVideos.push(file);
+            }
+            
+            // Create preview element
+            const previewEl = document.createElement('div');
+            previewEl.className = 'file-preview-item position-relative';
+            previewEl.dataset.fileId = fileId;
+            previewEl.dataset.fileType = type;
+            
+            if (type === 'image') {
+                // Create image preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewEl.innerHTML = `
+                        <div class="position-relative">
+                            <img src="${e.target.result}" class="img-thumbnail" style="max-height: 100px; max-width: 100px;">
+                            <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 remove-file" data-file-id="${fileId}" data-file-type="${type}">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                // Create video preview
+                previewEl.innerHTML = `
+                    <div class="position-relative p-2 bg-light rounded">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-film me-2 text-primary"></i>
+                            <div class="small text-truncate" style="max-width: 150px;">
+                                ${file.name}<br>
+                                <small class="text-muted">${formatBytes(file.size)}</small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-danger ms-2 remove-file" data-file-id="${fileId}" data-file-type="${type}">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Add to preview container
+            filesPreviewContainer.appendChild(previewEl);
+            
+            // Make sure preview container is visible
+            previewContainer.classList.remove('d-none');
+        }
+        
+        // Handle clicks on remove buttons for individual files
+        filesPreviewContainer.addEventListener('click', function(e) {
+            const removeBtn = e.target.closest('.remove-file');
+            if (!removeBtn) return;
+            
+            const fileId = removeBtn.dataset.fileId;
+            const fileType = removeBtn.dataset.fileType;
+            
+            // Remove file from array
+            if (fileType === 'image') {
+                selectedImages = selectedImages.filter(file => file.fileId !== fileId);
+            } else {
+                selectedVideos = selectedVideos.filter(file => file.fileId !== fileId);
+            }
+            
+            // Remove preview element
+            const previewEl = removeBtn.closest('.file-preview-item');
+            previewEl.remove();
+            
+            // Hide container if no files left
+            if (selectedImages.length === 0 && selectedVideos.length === 0) {
+                previewContainer.classList.add('d-none');
+            }
+            
+            // Update file inputs
+            updateFileInputs();
+        });
+        
+        // Remove all files button
+        removeAllFilesBtn.addEventListener('click', function() {
+            // Clear arrays
+            selectedImages = [];
+            selectedVideos = [];
+            
+            // Clear previews
+            filesPreviewContainer.innerHTML = '';
+            
+            // Hide container
+            previewContainer.classList.add('d-none');
+            
+            // Update file inputs
+            updateFileInputs();
+        });
+        
+        // Update the file inputs with current selections
+        function updateFileInputs() {
+            // Create DataTransfer objects
+            const imagesTransfer = new DataTransfer();
+            const videosTransfer = new DataTransfer();
+            
+            // Add images to transfer
+            selectedImages.forEach(file => {
+                imagesTransfer.items.add(file);
+            });
+            
+            // Add videos to transfer
+            selectedVideos.forEach(file => {
+                videosTransfer.items.add(file);
+            });
+            
+            // Update inputs
+            imageInput.files = imagesTransfer.files;
+            videoInput.files = videosTransfer.files;
+        }
+        
+        // Helper function to format bytes to human-readable size
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        // Handle reply button clicks
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.comment-reply-btn')) {
+                e.preventDefault();
+                const button = e.target.closest('.comment-reply-btn');
+                const commentId = button.getAttribute('data-comment-id');
+                const username = button.getAttribute('data-username');
+                const replyForm = document.getElementById(`reply-form-${commentId}`);
+                
+                if (replyForm) {
+                    // Hide all other reply forms
+                    document.querySelectorAll('.reply-form-container').forEach(container => {
+                        if (container !== replyForm) {
+                            container.classList.add('d-none');
+                        }
+                    });
+                    
+                    // Toggle current reply form
+                    replyForm.classList.toggle('d-none');
+                    
+                    // Focus on input if form is shown
+                    if (!replyForm.classList.contains('d-none')) {
+                        const input = replyForm.querySelector('input[name="content"]');
+                        if (input) {
+                            input.focus();
+                        }
+                    }
+                }
+            }
+        });
+
+        // Image viewer functionality
+        document.addEventListener('click', function(e) {
+            const clickedImage = e.target.closest('.post-image');
+            if (clickedImage) {
+                e.preventDefault();
+                
+                const postId = clickedImage.dataset.postId;
+                const imageIndex = parseInt(clickedImage.dataset.imageIndex);
+                
+                // Find all images in this post
+                const postImages = document.querySelectorAll(`.post-image[data-post-id="${postId}"]`);
+                const imageUrls = Array.from(postImages).map(img => img.dataset.imageUrl);
+                
+                // Show the modal with the clicked image
+                showImageModal(imageUrls, imageIndex);
+            }
+        });
+        
+        function showImageModal(imageUrls, currentIndex) {
+            // Check if the modal already exists or create it
+            let imageModal = document.getElementById('imageViewerModal');
+            
+            if (!imageModal) {
+                // Create the modal if it doesn't exist
+                const modalHTML = `
+                    <div class="modal fade" id="imageViewerModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-fullscreen">
+                            <div class="modal-content bg-dark text-white">
+                                <div class="modal-header border-0">
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body d-flex align-items-center justify-content-center position-relative p-0">
+                                    <button class="btn btn-dark position-absolute start-0 top-50 translate-middle-y image-nav-btn prev-btn" style="z-index: 1050;">
+                                        <i class="fas fa-chevron-left fa-2x"></i>
+                                    </button>
+                                    
+                                    <div class="image-container text-center">
+                                        <img src="" class="img-fluid modal-image" style="max-height: 90vh;">
+                                    </div>
+                                    
+                                    <button class="btn btn-dark position-absolute end-0 top-50 translate-middle-y image-nav-btn next-btn" style="z-index: 1050;">
+                                        <i class="fas fa-chevron-right fa-2x"></i>
+                                    </button>
+                                </div>
+                                <div class="modal-footer border-0 justify-content-center">
+                                    <div class="image-counter"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                imageModal = document.getElementById('imageViewerModal');
+                
+                // Get the modal instance
+                const bsModal = new bootstrap.Modal(imageModal);
+                
+                // Add navigation event listeners
+                const prevBtn = imageModal.querySelector('.prev-btn');
+                const nextBtn = imageModal.querySelector('.next-btn');
+                
+                prevBtn.addEventListener('click', function() {
+                    currentIndex = (currentIndex - 1 + imageUrls.length) % imageUrls.length;
+                    updateModalImage(imageUrls[currentIndex], currentIndex, imageUrls.length);
+                });
+                
+                nextBtn.addEventListener('click', function() {
+                    currentIndex = (currentIndex + 1) % imageUrls.length;
+                    updateModalImage(imageUrls[currentIndex], currentIndex, imageUrls.length);
+                });
+                
+                // Also allow keyboard navigation
+                imageModal.addEventListener('keydown', function(e) {
+                    if (e.key === 'ArrowLeft') {
+                        prevBtn.click();
+                    } else if (e.key === 'ArrowRight') {
+                        nextBtn.click();
+                    } else if (e.key === 'Escape') {
+                        bsModal.hide();
+                    }
+                });
+                
+                // Show the modal when it's created
+                imageModal.addEventListener('shown.bs.modal', function() {
+                    // Focus the modal to enable keyboard navigation
+                    imageModal.focus();
+                });
+            }
+            
+            // Update the modal with the current image
+            updateModalImage(imageUrls[currentIndex], currentIndex, imageUrls.length);
+            
+            // Show/hide navigation buttons based on image count
+            const navBtns = imageModal.querySelectorAll('.image-nav-btn');
+            navBtns.forEach(btn => {
+                btn.style.display = imageUrls.length > 1 ? 'block' : 'none';
+            });
+            
+            // Show the modal
+            const bsModal = bootstrap.Modal.getInstance(imageModal) || new bootstrap.Modal(imageModal);
+            bsModal.show();
+        }
+        
+        function updateModalImage(imageUrl, index, total) {
+            const imageModal = document.getElementById('imageViewerModal');
+            const modalImage = imageModal.querySelector('.modal-image');
+            const counter = imageModal.querySelector('.image-counter');
+            
+            modalImage.src = imageUrl;
+            
+            // Update counter
+            if (total > 1) {
+                counter.textContent = `${index + 1} / ${total}`;
+                counter.style.display = 'block';
+            } else {
+                counter.style.display = 'none';
+            }
+        }
+
+        // Handle comment section expansion - fix the nested DOMContentLoaded event
+        document.querySelectorAll('.comment-toggle-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const target = document.querySelector(this.getAttribute('data-bs-target'));
+                const commentsList = target.querySelector('.comments-list');
+                
+                // Ensure comments load when the section is expanded
+                target.addEventListener('shown.bs.collapse', function() {
+                    console.log('Comment section expanded for post', target.id);
+                    if (commentsList) {
+                        // Force a direct AJAX call rather than relying on HTMX triggers
+                        const url = commentsList.getAttribute('hx-get');
+                        if (url) {
+                            console.log('Manually loading comments from:', url);
+                            htmx.ajax('GET', url, {target: commentsList, swap: 'innerHTML'});
+                        }
+                    }
+                }, {once: true});
+            });
+        });
+
+        // Fix comment form submission to avoid duplicates
+        document.querySelectorAll('.comment-form').forEach(form => {
+            // Clear any existing event handlers
+            const newForm = form.cloneNode(true);
+            form.parentNode.replaceChild(newForm, form);
+            
+            // Add form submission handler
+            newForm.addEventListener('submit', function(event) {
+                const input = this.querySelector('input[name="content"]');
+                if (!input || !input.value.trim()) {
+                    event.preventDefault();
+                    return false;
+                }
+                
+                console.log('Submitting comment form for post:', this.getAttribute('data-post-id'));
+            });
+            
+            // Add success handler
+            newForm.addEventListener('htmx:afterOnLoad', function(event) {
+                console.log('Comment form response received', event);
+                if (event.detail.successful) {
+                    this.reset();
+                    const input = this.querySelector('input[name="content"]');
+                    if (input) input.focus();
+                }
+            });
+        });
+
+        // Add to your JavaScript
+        document.addEventListener('htmx:afterSwap', function(event) {
+            if (event.detail.target.classList.contains('comments-list')) {
+                console.log('Comments loaded successfully for:', event.detail.target.id);
+            }
+        });
+
+        document.addEventListener('htmx:beforeRequest', function(event) {
+            if (event.detail.target.classList.contains('comments-list')) {
+                console.log('Loading comments for:', event.detail.target.id);
+            }
+        });
+
+        document.addEventListener('htmx:beforeSend', function(event) {
+            console.log('HTMX request being sent to:', event.detail.path);
+        });
+
+        // Add to your JavaScript - Track audio playback to prevent HTMX refreshes while audio is playing
+        let isAudioPlaying = false;
+        const audioRefreshInterval = 30000; // 30 seconds between refreshes when no audio playing
+        let audioRefreshTimer;
+
+        // Function to start or reset refresh timer
+        function startAudioRefreshTimer() {
+            clearTimeout(audioRefreshTimer);
+            if (!isAudioPlaying) {
+                audioRefreshTimer = setTimeout(() => {
+                    document.body.dispatchEvent(new Event('audio-ready'));
+                }, audioRefreshInterval);
+            }
+        }
+
+        // Listen for all audio play events
+        document.addEventListener('play', function(e) {
+            if (e.target.tagName === 'AUDIO') {
+                console.log('Audio started playing - pausing HTMX refreshes');
+                isAudioPlaying = true;
+                clearTimeout(audioRefreshTimer);
+            }
+        }, true);
+
+        // Listen for all audio pause/end events
+        document.addEventListener('pause', function(e) {
+            if (e.target.tagName === 'AUDIO') {
+                console.log('Audio paused - resuming HTMX refreshes');
+                isAudioPlaying = false;
+                startAudioRefreshTimer();
+            }
+        }, true);
+
+        document.addEventListener('ended', function(e) {
+            if (e.target.tagName === 'AUDIO') {
+                console.log('Audio ended - resuming HTMX refreshes');
+                isAudioPlaying = false;
+                startAudioRefreshTimer();
+            }
+        }, true);
+
+        // Initialize the timer
+        startAudioRefreshTimer();
+
+        // Initialization for voice message players in comments
+        function initializeVoiceMessagePlayers() {
+            document.querySelectorAll('.voice-message-container').forEach(container => {
+                const playButton = container.querySelector('.voice-play-button');
+                const audio = container.querySelector('audio');
+                
+                if (!playButton || !audio) return;
+                
+                // Make sure we only add the click handler once
+                if (!playButton.dataset.initialized) {
+                    playButton.dataset.initialized = 'true';
+                    
+                    playButton.addEventListener('click', function() {
+                        if (audio.paused) {
+                            // Pause all other audio first
+                            document.querySelectorAll('audio').forEach(player => {
+                                if (player !== audio && !player.paused) {
+                                    player.pause();
+                                    // Reset other player buttons
+                                    const otherContainer = player.closest('.voice-message-container');
+                                    if (otherContainer) {
+                                        const otherBtn = otherContainer.querySelector('.voice-play-button i');
+                                        if (otherBtn) otherBtn.className = 'fas fa-play';
+                                    }
+                                }
+                            });
+                            
+                            // Play this audio
+                            audio.play();
+                            playButton.querySelector('i').className = 'fas fa-pause';
+                        } else {
+                            // Pause audio
+                            audio.pause();
+                            playButton.querySelector('i').className = 'fas fa-play';
+                        }
+                    });
+                    
+                    // Update UI when audio ends
+                    audio.addEventListener('ended', function() {
+                        console.log('Audio ended, resetting play button');
+                        const icon = playButton.querySelector('i');
+                        if (icon) icon.className = 'fas fa-play';
+                    });
+                }
+            });
+        }
+
+        // Initialize voice players when comments load
+        document.addEventListener('htmx:afterSwap', function(event) {
+            if (event.detail.target.classList.contains('comments-list')) {
+                console.log('Comments loaded successfully for:', event.detail.target.id);
+                initializeVoiceMessagePlayers();
+            }
+        });
+        
+        // Initialize any voice players that might already be in the DOM
+        initializeVoiceMessagePlayers();
+    });
+</script>
+{% endblock %} 

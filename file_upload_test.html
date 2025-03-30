@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        button {
+            padding: 10px;
+            cursor: pointer;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .status {
+            margin-top: 20px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>File Upload Test</h1>
+    <div class="container">
+        <form id="upload-form" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="text-content">Text Content:</label>
+                <input type="text" id="text-content" name="content" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label for="file-upload">File Upload:</label>
+                <input type="file" id="file-upload" name="file">
+            </div>
+            
+            <div class="form-group">
+                <label for="image-upload">Image Upload:</label>
+                <input type="file" id="image-upload" name="image" accept="image/*">
+            </div>
+            
+            <div class="form-group">
+                <label for="video-upload">Video Upload:</label>
+                <input type="file" id="video-upload" name="video" accept="video/*">
+            </div>
+            
+            <div class="form-group">
+                <label for="voice-upload">Voice Message Upload:</label>
+                <input type="file" id="voice-upload" name="voice_message" accept="audio/*">
+            </div>
+            
+            <button type="submit">Submit</button>
+        </form>
+        
+        <div class="status" id="status"></div>
+        <div id="form-data-display"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('upload-form');
+            const statusDiv = document.getElementById('status');
+            const dataDisplay = document.getElementById('form-data-display');
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                
+                // Display form data for debugging
+                dataDisplay.innerHTML = '<h3>Form Data Contents:</h3>';
+                let dataHtml = '<ul>';
+                
+                for (const [key, value] of formData.entries()) {
+                    if (value instanceof File) {
+                        dataHtml += `<li>${key}: ${value.name} (${value.type}, ${value.size} bytes)</li>`;
+                    } else {
+                        dataHtml += `<li>${key}: ${value}</li>`;
+                    }
+                }
+                
+                dataHtml += '</ul>';
+                dataDisplay.innerHTML += dataHtml;
+                
+                statusDiv.textContent = 'Form submitted (this would normally be sent to the server)';
+            });
+            
+            // Add file preview functionality
+            document.querySelectorAll('input[type="file"]').forEach(input => {
+                input.addEventListener('change', function() {
+                    const file = this.files[0];
+                    if (!file) return;
+                    
+                    const fileType = file.type.split('/')[0];
+                    const previewId = `${this.id}-preview`;
+                    
+                    // Remove any existing preview
+                    const existingPreview = document.getElementById(previewId);
+                    if (existingPreview) {
+                        existingPreview.remove();
+                    }
+                    
+                    // Create preview container
+                    const previewContainer = document.createElement('div');
+                    previewContainer.id = previewId;
+                    previewContainer.className = 'file-preview';
+                    
+                    if (fileType === 'image') {
+                        const img = document.createElement('img');
+                        img.src = URL.createObjectURL(file);
+                        img.style.maxWidth = '300px';
+                        img.style.maxHeight = '200px';
+                        previewContainer.appendChild(img);
+                    } else if (fileType === 'video') {
+                        const video = document.createElement('video');
+                        video.src = URL.createObjectURL(file);
+                        video.controls = true;
+                        video.style.maxWidth = '300px';
+                        previewContainer.appendChild(video);
+                    } else if (fileType === 'audio') {
+                        const audio = document.createElement('audio');
+                        audio.src = URL.createObjectURL(file);
+                        audio.controls = true;
+                        previewContainer.appendChild(audio);
+                    } else {
+                        previewContainer.textContent = `Selected file: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+                    }
+                    
+                    this.parentNode.appendChild(previewContainer);
+                });
+            });
+        });
+    </script>
+</body>
+</html> 

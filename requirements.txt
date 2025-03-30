@@ -1,0 +1,26 @@
+Django==4.2.9
+Pillow==10.1.0
+django-crispy-forms==2.1.0
+crispy-bootstrap5==0.7
+python-dotenv==1.0.0
+gunicorn==21.2.0
+whitenoise==6.5.0
+django-htmx==1.16.0
+django-allauth==0.57.0
+channels==4.0.0
+daphne==4.0.0
+psycopg2-binary==2.9.9
+dj-database-url==2.1.0
+channels-redis==4.1.0
+pytz==2023.3
+
+# Content moderation dependencies
+requests==2.31.0
+opencv-python==4.8.1.78
+# Free alternatives for moderation
+nudenet==2.0.9
+numpy==1.25.2
+tensorflow-hub==0.14.0
+
+# Optional paid services (commented out)
+# google-cloud-vision==3.7.3 

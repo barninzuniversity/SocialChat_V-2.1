@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Recording Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        button {
+            padding: 10px;
+            cursor: pointer;
+        }
+        .recorder-container {
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .preview-container {
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .status {
+            margin-top: 20px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>Voice Recording Test</h1>
+    <div class="container">
+        <button id="start-recording">Start Recording</button>
+        
+        <div id="recorder-container" class="recorder-container">
+            <div>
+                <strong>Recording...</strong> <span id="recording-time">00:00</span>
+            </div>
+            <button id="stop-recording">Stop Recording</button>
+            <button id="cancel-recording">Cancel</button>
+        </div>
+        
+        <div id="preview-container" class="preview-container">
+            <h3>Recording Preview</h3>
+            <audio id="audio-preview" controls></audio>
+            <div>
+                <button id="use-recording">Use This Recording</button>
+                <button id="discard-recording">Discard</button>
+            </div>
+        </div>
+        
+        <div class="status" id="status"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const startBtn = document.getElementById('start-recording');
+            const stopBtn = document.getElementById('stop-recording');
+            const cancelBtn = document.getElementById('cancel-recording');
+            const useBtn = document.getElementById('use-recording');
+            const discardBtn = document.getElementById('discard-recording');
+            const recorderContainer = document.getElementById('recorder-container');
+            const previewContainer = document.getElementById('preview-container');
+            const audioPreview = document.getElementById('audio-preview');
+            const recordingTime = document.getElementById('recording-time');
+            const statusDiv = document.getElementById('status');
+            
+            let mediaRecorder;
+            let audioChunks = [];
+            let recordingTimer;
+            let secondsRecorded = 0;
+            
+            function updateStatus(message) {
+                statusDiv.textContent = message;
+            }
+            
+            function updateRecordingTime() {
+                secondsRecorded++;
+                const minutes = Math.floor(secondsRecorded / 60);
+                const seconds = secondsRecorded % 60;
+                recordingTime.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            startBtn.addEventListener('click', function() {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(stream => {
+                            updateStatus('Microphone access granted');
+                            mediaRecorder = new MediaRecorder(stream);
+                            
+                            mediaRecorder.ondataavailable = event => {
+                                audioChunks.push(event.data);
+                            };
+                            
+                            mediaRecorder.onstop = () => {
+                                const audioBlob = new Blob(audioChunks, { type: 'audio/mpeg' });
+                                const audioUrl = URL.createObjectURL(audioBlob);
+                                audioPreview.src = audioUrl;
+                                
+                                recorderContainer.style.display = 'none';
+                                previewContainer.style.display = 'block';
+                                
+                                // Stop all tracks to release microphone
+                                stream.getTracks().forEach(track => track.stop());
+                            };
+                            
+                            // Reset chunks
+                            audioChunks = [];
+                            
+                            // Start recording
+                            mediaRecorder.start();
+                            recorderContainer.style.display = 'block';
+                            
+                            // Start recording timer
+                            secondsRecorded = 0;
+                            updateRecordingTime();
+                            recordingTimer = setInterval(updateRecordingTime, 1000);
+                        })
+                        .catch(error => {
+                            console.error('Error accessing microphone:', error);
+                            updateStatus(`Error accessing microphone: ${error.message}`);
+                        });
+                } else {
+                    updateStatus('Your browser does not support audio recording.');
+                }
+            });
+            
+            stopBtn.addEventListener('click', function() {
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                    clearInterval(recordingTimer);
+                    updateStatus('Recording stopped');
+                }
+            });
+            
+            cancelBtn.addEventListener('click', function() {
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                    clearInterval(recordingTimer);
+                    recorderContainer.style.display = 'none';
+                    updateStatus('Recording cancelled');
+                }
+            });
+            
+            useBtn.addEventListener('click', function() {
+                updateStatus('Recording ready to use (in a real app, this would be sent to the server)');
+                previewContainer.style.display = 'none';
+            });
+            
+            discardBtn.addEventListener('click', function() {
+                audioPreview.src = '';
+                previewContainer.style.display = 'none';
+                updateStatus('Recording discarded');
+            });
+        });
+    </script>
+</body>
+</html> 

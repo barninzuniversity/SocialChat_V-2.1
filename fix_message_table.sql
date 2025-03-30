@@ -1,0 +1,2 @@
+ALTER TABLE chat_message ADD COLUMN video VARCHAR(100) NULL;
+ALTER TABLE chat_message ADD COLUMN voice_message VARCHAR(100) NULL; 
