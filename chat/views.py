@@ -26,6 +26,7 @@ import pytz
 import logging
 from django.db.models import F
 from django.db.models.functions import Concat
+from django.db import connection
 
 # Dictionary to store message queues for each chat room
 message_queues = {}
@@ -81,10 +82,32 @@ def home(request):
     
     # Try to filter by moderation status, but don't break if fields don't exist
     try:
-        posts = posts.exclude(
-            # Exclude posts that failed moderation (unless they belong to the current user)
-            ~Q(author=user_profile) & Q(is_moderated=True) & Q(moderation_passed=False)
-        )
+        # Check if moderation fields exist before filtering
+        with connection.cursor() as cursor:
+            # For PostgreSQL (Render.com)
+            try:
+                cursor.execute("""
+                    SELECT column_name FROM information_schema.columns 
+                    WHERE table_name = 'chat_post' AND column_name = 'is_moderated'
+                """)
+                has_moderation = bool(cursor.fetchone())
+            except:
+                # For SQLite (local development)
+                try:
+                    cursor.execute("PRAGMA table_info(chat_post)")
+                    columns = [info[1] for info in cursor.fetchall()]
+                    has_moderation = 'is_moderated' in columns
+                except:
+                    has_moderation = False
+                    
+        if has_moderation:
+            posts = posts.exclude(
+                # Exclude posts that failed moderation (unless they belong to the current user)
+                ~Q(author=user_profile) & Q(is_moderated=True) & Q(moderation_passed=False)
+            )
+        else:
+            logger.warning("Moderation fields don't exist yet, skipping moderation filtering")
+            
     except Exception as e:
         logger.warning(f"Could not filter posts by moderation status: {str(e)}. Database may need migration.")
     
