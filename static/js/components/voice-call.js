@@ -45,6 +45,130 @@ document.addEventListener('DOMContentLoaded', function() {
         ]
     };
     
+    // Setup WebRTC connection
+    async function setupWebRTC() {
+        try {
+            // Get user's audio stream
+            callStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            // Create peer connection
+            peerConnection = new RTCPeerConnection(configuration);
+            
+            // Add local audio track to peer connection
+            callStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, callStream);
+            });
+            
+            // Create data channel for signaling
+            dataChannel = peerConnection.createDataChannel('signaling');
+            
+            // Handle incoming data channel
+            peerConnection.ondatachannel = (event) => {
+                dataChannel = event.channel;
+                setupDataChannel();
+            };
+            
+            // Handle ICE candidates
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    // Send ICE candidate to other participants
+                    if (dataChannel && dataChannel.readyState === 'open') {
+                        dataChannel.send(JSON.stringify({
+                            type: 'candidate',
+                            candidate: event.candidate
+                        }));
+                    }
+                }
+            };
+            
+            // Handle incoming tracks
+            peerConnection.ontrack = (event) => {
+                const remoteAudio = document.createElement('audio');
+                remoteAudio.srcObject = event.streams[0];
+                remoteAudio.autoplay = true;
+                document.body.appendChild(remoteAudio);
+            };
+            
+            // Create and send offer if initiator
+            if (isCallInitiator) {
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                if (dataChannel.readyState === 'open') {
+                    dataChannel.send(JSON.stringify({
+                        type: 'offer',
+                        offer: offer
+                    }));
+                }
+            }
+            
+            // Setup data channel handlers
+            setupDataChannel();
+            
+        } catch (error) {
+            console.error('Error setting up WebRTC:', error);
+            // Handle error appropriately
+            endCall();
+        }
+    }
+    
+    // Setup data channel handlers
+    function setupDataChannel() {
+        if (!dataChannel) return;
+        
+        dataChannel.onmessage = async (event) => {
+            const data = JSON.parse(event.data);
+            
+            switch (data.type) {
+                case 'offer':
+                    await handleOffer(data.offer);
+                    break;
+                case 'answer':
+                    await handleAnswer(data.answer);
+                    break;
+                case 'candidate':
+                    await handleCandidate(data.candidate);
+                    break;
+            }
+        };
+    }
+    
+    // Handle incoming offer
+    async function handleOffer(offer) {
+        try {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            
+            if (dataChannel && dataChannel.readyState === 'open') {
+                dataChannel.send(JSON.stringify({
+                    type: 'answer',
+                    answer: answer
+                }));
+            }
+        } catch (error) {
+            console.error('Error handling offer:', error);
+        }
+    }
+    
+    // Handle incoming answer
+    async function handleAnswer(answer) {
+        try {
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        } catch (error) {
+            console.error('Error handling answer:', error);
+        }
+    }
+    
+    // Handle incoming ICE candidate
+    async function handleCandidate(candidate) {
+        try {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (error) {
+            console.error('Error handling ICE candidate:', error);
+        }
+    }
+    
     // Start a voice call
     if (voiceCallBtn) {
         voiceCallBtn.addEventListener('click', function() {
@@ -140,125 +264,6 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             console.error('Error joining call:', error);
         });
-    }
-    
-    // Set up WebRTC
-    function setupWebRTC() {
-        // Request user media
-        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-            .then(stream => {
-                callStream = stream;
-                
-                // Create peer connection
-                peerConnection = new RTCPeerConnection(configuration);
-                
-                // Add local stream
-                stream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, stream);
-                });
-                
-                // Create data channel for signaling
-                if (isCallInitiator) {
-                    dataChannel = peerConnection.createDataChannel('signaling');
-                    dataChannel.onmessage = handleDataChannelMessage;
-                } else {
-                    peerConnection.ondatachannel = event => {
-                        dataChannel = event.channel;
-                        dataChannel.onmessage = handleDataChannelMessage;
-                    };
-                }
-                
-                // Handle ICE candidates
-                peerConnection.onicecandidate = event => {
-                    if (event.candidate) {
-                        if (dataChannel && dataChannel.readyState === 'open') {
-                            dataChannel.send(JSON.stringify({
-                                type: 'ice-candidate',
-                                candidate: event.candidate
-                            }));
-                        }
-                    }
-                };
-                
-                // Handle connection state changes
-                peerConnection.onconnectionstatechange = event => {
-                    switch(peerConnection.connectionState) {
-                        case 'connected':
-                            callStatusElement.textContent = 'Connected';
-                            startCallTimer();
-                            break;
-                        case 'disconnected':
-                        case 'failed':
-                            endCall();
-                            break;
-                    }
-                };
-                
-                // Handle track events
-                peerConnection.ontrack = event => {
-                    // Create audio element for remote stream
-                    const remoteAudio = document.createElement('audio');
-                    remoteAudio.srcObject = event.streams[0];
-                    remoteAudio.autoplay = true;
-                    remoteAudio.style.display = 'none';
-                    document.body.appendChild(remoteAudio);
-                };
-                
-                // Create offer if initiator
-                if (isCallInitiator) {
-                    peerConnection.createOffer()
-                        .then(offer => peerConnection.setLocalDescription(offer))
-                        .then(() => {
-                            // Send offer to signaling server
-                        })
-                        .catch(error => {
-                            console.error('Error creating offer:', error);
-                        });
-                }
-            })
-            .catch(error => {
-                console.error('Error accessing microphone:', error);
-                alert('Could not access microphone. Please allow microphone access and try again.');
-                endCall();
-            });
-    }
-    
-    // Handle data channel messages
-    function handleDataChannelMessage(event) {
-        try {
-            const message = JSON.parse(event.data);
-            
-            switch(message.type) {
-                case 'ice-candidate':
-                    peerConnection.addIceCandidate(message.candidate)
-                        .catch(error => {
-                            console.error('Error adding ICE candidate:', error);
-                        });
-                    break;
-                case 'offer':
-                    peerConnection.setRemoteDescription(message)
-                        .then(() => peerConnection.createAnswer())
-                        .then(answer => peerConnection.setLocalDescription(answer))
-                        .then(() => {
-                            dataChannel.send(JSON.stringify({
-                                type: 'answer',
-                                sdp: peerConnection.localDescription.sdp
-                            }));
-                        })
-                        .catch(error => {
-                            console.error('Error handling offer:', error);
-                        });
-                    break;
-                case 'answer':
-                    peerConnection.setRemoteDescription(message)
-                        .catch(error => {
-                            console.error('Error handling answer:', error);
-                        });
-                    break;
-            }
-        } catch (error) {
-            console.error('Error parsing data channel message:', error);
-        }
     }
     
     // Poll call status with exponential backoff
