@@ -199,28 +199,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Setup WebRTC connection
+    // Set up WebRTC connection
     async function setupWebRTC() {
         try {
             console.log('Setting up WebRTC connection');
             
-            // Reset any existing connections
-            if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
-            }
-            
             // Get user's audio stream
-            callStream = await navigator.mediaDevices.getUserMedia({ 
-                audio: true,
-                video: false
-            });
+            callStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            console.log('Got local audio stream');
             
-            console.log('Got local media stream:', callStream);
-            
-            // Create peer connection
+            // Create new RTCPeerConnection
             peerConnection = new RTCPeerConnection(configuration);
-            console.log('Created peer connection');
+            console.log('Created new peer connection');
             
             // Add local audio track to peer connection
             callStream.getTracks().forEach(track => {
@@ -228,24 +218,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 peerConnection.addTrack(track, callStream);
             });
             
-            // Handle ICE candidates
+            // Set up ICE candidate handling
             peerConnection.onicecandidate = handleICECandidate;
-            
-            // Handle connection state changes
-            peerConnection.onconnectionstatechange = function(event) {
-                console.log('Connection state changed:', peerConnection.connectionState);
-                switch(peerConnection.connectionState) {
-                    case 'connected':
-                        callStatusElement.textContent = 'Connected';
-                        startCallTimer();
-                        break;
-                    case 'disconnected':
-                    case 'failed':
-                        console.log('Connection failed or disconnected');
-                        endCall();
-                        break;
-                }
-            };
             
             // Handle ICE connection state changes
             peerConnection.oniceconnectionstatechange = function(event) {
