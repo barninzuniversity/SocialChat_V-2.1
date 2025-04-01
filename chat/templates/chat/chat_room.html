@@ -692,59 +692,52 @@
         /* Call animation styling */
         .call-animation {
             position: relative;
-            width: 120px;
-            height: 120px;
+            width: 80px;
+            height: 80px;
             margin: 0 auto;
         }
         
         .call-animation-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 100%;
+            border: 2px solid #0d6efd;
+            animation: call-circle-animate 1.5s ease-in-out infinite;
             position: absolute;
-            border: 3px solid #0d6efd;
-            opacity: 0;
-            border-radius: 50%;
-            width: 100%;
-            height: 100%;
-            left: 0;
             top: 0;
-            animation: call-pulse 2s ease-out infinite;
+            left: 0;
         }
         
-        .call-animation-circle:nth-child(2) {
-            animation-delay: 0.5s;
-        }
-        
-        .call-animation-circle:nth-child(3) {
-            animation-delay: 1s;
-        }
-        
-        .call-animation-phone-icon {
+        .call-animation-circle-fill {
+            width: 80px;
+            height: 80px;
+            border-radius: 100%;
+            background-color: #0d6efd;
+            opacity: 0.2;
+            animation: call-circle-fill-animate 1.5s ease-in-out infinite;
             position: absolute;
-            width: 70px;
-            height: 70px;
-            background-color: #fff;
-            border-radius: 50%;
+            top: 0;
+            left: 0;
+        }
+        
+        .call-animation-img {
+            width: 50px;
+            height: 50px;
+            border-radius: 100%;
+            background-color: #0d6efd;
             display: flex;
             justify-content: center;
             align-items: center;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            z-index: 1;
-            animation: call-icon-pulse 1s ease-in-out infinite alternate;
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            animation: call-img-animate 1.5s ease-in-out infinite;
         }
         
-        body.dark .call-animation-phone-icon {
-            background-color: #2a2a2a;
-        }
-        
-        @keyframes call-pulse {
+        @keyframes call-circle-animate {
             0% {
-                transform: scale(0.5);
-                opacity: 0;
-            }
-            50% {
-                opacity: 0.5;
+                transform: scale(1);
+                opacity: 0.3;
             }
             100% {
                 transform: scale(1.5);
@@ -752,12 +745,46 @@
             }
         }
         
-        @keyframes call-icon-pulse {
+        @keyframes call-circle-fill-animate {
             0% {
-                transform: translate(-50%, -50%) scale(1);
+                transform: scale(1);
+                opacity: 0.2;
             }
             100% {
-                transform: translate(-50%, -50%) scale(1.1);
+                transform: scale(1.3);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes call-img-animate {
+            0% {
+                transform: scale(1);
+            }
+            10% {
+                transform: scale(1.1);
+            }
+            20% {
+                transform: scale(1);
+            }
+        }
+        
+        /* Pulse animation for active call */
+        .pulse-animation {
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                opacity: 0.8;
+            }
+            50% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0.95);
+                opacity: 0.8;
             }
         }
         
@@ -1647,15 +1674,14 @@
                             <i class="fas fa-phone-alt fa-3x text-primary pulse-animation"></i>
                         </div>
                         <h5 id="call-status">Connecting...</h5>
-                        <p id="call-participants" class="text-muted"></p>
-                        <p id="call-timer" class="badge bg-light text-dark"></p>
+                        <p id="call-participants" class="text-muted">Waiting for participants...</p>
+                        <div id="call-timer" class="badge bg-light text-dark" style="display: none;">00:00</div>
                     </div>
-                    
-                    <div id="call-controls" class="d-flex justify-content-center gap-3">
-                        <button id="mute-btn" class="btn btn-light rounded-circle p-3" title="Mute">
+                    <div class="d-flex justify-content-center gap-3">
+                        <button id="mute-btn" class="btn btn-light rounded-circle p-3">
                             <i class="fas fa-microphone"></i>
                         </button>
-                        <button id="end-call-btn" class="btn btn-danger rounded-circle p-3" title="End Call">
+                        <button id="end-call-btn" class="btn btn-danger rounded-circle p-3">
                             <i class="fas fa-phone-slash"></i>
                         </button>
                     </div>
@@ -1664,41 +1690,36 @@
         </div>
     </div>
 
-    <!-- Add Incoming Call Modal -->
-    <div class="modal fade" id="incomingCallModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <!-- Incoming Call Modal -->
+    <div class="modal fade" id="incomingCallModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-3 border-primary animate__animated animate__pulse">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">
-                        <i class="fas fa-phone-alt me-2 animate__animated animate__infinite animate__pulse"></i>
-                        Incoming Voice Call
-                    </h5>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Incoming Call</h5>
                 </div>
-                <div class="modal-body text-center p-4">
-                    <div class="mb-4">
-                        <div class="call-animation">
-                            <div class="call-animation-circle"></div>
-                            <div class="call-animation-circle"></div>
-                            <div class="call-animation-circle"></div>
-                            <div class="call-animation-phone-icon">
-                                <i class="fas fa-phone-alt fa-3x text-primary"></i>
-                            </div>
+                <div class="modal-body text-center">
+                    <div class="call-animation mb-4">
+                        <div class="call-animation-circle"></div>
+                        <div class="call-animation-circle call-animation-circle-fill"></div>
+                        <div class="call-animation-img">
+                            <i class="fas fa-phone-alt fa-2x text-white"></i>
                         </div>
                     </div>
-                    <h4 id="incoming-caller" class="mb-3">Someone is calling you</h4>
-                    <p class="text-muted small mb-4">Incoming call...</p>
-                    
-                    <div class="d-flex justify-content-center gap-4 mt-4">
-                        <button id="decline-call-btn" class="btn btn-danger rounded-circle p-3 shadow-lg" title="Decline">
-                            <i class="fas fa-phone-slash fa-lg"></i>
+                    <h5 id="incoming-caller" class="mb-4">Someone is calling...</h5>
+                    <div class="d-flex justify-content-center gap-3">
+                        <button id="decline-call-btn" class="btn btn-danger rounded-circle p-3">
+                            <i class="fas fa-phone-slash"></i>
                         </button>
-                        <button id="accept-call-btn" class="btn btn-success rounded-circle p-3 shadow-lg animate__animated animate__pulse animate__infinite" title="Accept">
-                            <i class="fas fa-phone-alt fa-lg"></i>
+                        <button id="accept-call-btn" class="btn btn-success rounded-circle p-3">
+                            <i class="fas fa-phone"></i>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Add ringtone audio element with preload -->
+    <audio id="ringtone-audio" src="{% static 'sounds/call-ringtone.mp3' %}" preload="auto" loop style="display: none;"></audio>
 </body>
 </html> 

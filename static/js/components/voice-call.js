@@ -166,8 +166,38 @@ document.addEventListener('DOMContentLoaded', function() {
             { urls: 'stun:stun2.l.google.com:19302' },
             { urls: 'stun:stun3.l.google.com:19302' },
             { urls: 'stun:stun4.l.google.com:19302' }
-        ]
+        ],
+        iceCandidatePoolSize: 10
     };
+    
+    // Request microphone permissions early (on page load)
+    requestMicrophonePermission();
+    
+    function requestMicrophonePermission() {
+        // Check if permission is already granted
+        if (navigator.permissions && navigator.permissions.query) {
+            navigator.permissions.query({ name: 'microphone' })
+                .then(permissionStatus => {
+                    if (permissionStatus.state === 'granted') {
+                        console.log('Microphone permission already granted');
+                    } else {
+                        // Request permission proactively
+                        navigator.mediaDevices.getUserMedia({ audio: true })
+                            .then(stream => {
+                                console.log('Microphone permission granted');
+                                // Stop all tracks in the temporary stream
+                                stream.getTracks().forEach(track => track.stop());
+                            })
+                            .catch(error => {
+                                console.error('Error requesting microphone permission:', error);
+                            });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error querying permissions:', error);
+                });
+        }
+    }
     
     // Setup WebRTC connection
     async function setupWebRTC() {
@@ -220,6 +250,17 @@ document.addEventListener('DOMContentLoaded', function() {
             // Handle ICE connection state changes
             peerConnection.oniceconnectionstatechange = function(event) {
                 console.log('ICE connection state changed:', peerConnection.iceConnectionState);
+                
+                // Handle if ICE gathering fails or times out
+                if (peerConnection.iceConnectionState === 'failed' || 
+                    peerConnection.iceConnectionState === 'disconnected') {
+                    console.warn('ICE connection failed or disconnected, attempting to restart ICE');
+                    
+                    // Try to restart ICE gathering
+                    if (peerConnection.restartIce) {
+                        peerConnection.restartIce();
+                    }
+                }
             };
             
             // Handle signaling state changes
@@ -280,6 +321,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Send all pending messages
             sendPendingSignallingMessages();
+        } else {
+            console.log('All ICE candidates have been generated');
         }
     }
     
@@ -423,7 +466,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
             
-            // Poll more frequently when we have pending messages
+            // Poll more frequently when we have pending messages to send
             pollCallStatus();
         }
     }
@@ -433,38 +476,75 @@ document.addEventListener('DOMContentLoaded', function() {
         voiceCallBtn.addEventListener('click', function() {
             console.log('Voice call button clicked');
             
-            // Check for active calls first
-            fetch(`/chat/${roomId}/active-call/`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        if (data.active_call) {
-                            console.log('Active call found, joining:', data.active_call);
-                            joinExistingCall(data.active_call);
-                        } else {
-                            console.log('No active call, initiating new call');
-                            initiateCall();
-                        }
-                    }
+            // First, ensure we have microphone permissions
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(tempStream => {
+                    // Stop the temporary stream
+                    tempStream.getTracks().forEach(track => track.stop());
+                    
+                    // Then check for active calls
+                    checkForCallsAndInitiate();
                 })
                 .catch(error => {
-                    console.error('Error checking for active calls:', error);
+                    console.error('Error accessing microphone:', error);
+                    alert('This application needs microphone access to make calls. Please enable microphone access and try again.');
                 });
         });
+    }
+    
+    function checkForCallsAndInitiate() {
+        // Check for active calls first
+        fetch(`/chat/${roomId}/active-call/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    if (data.active_call) {
+                        console.log('Active call found, joining:', data.active_call);
+                        joinExistingCall(data.active_call);
+                    } else {
+                        console.log('No active call, initiating new call');
+                        initiateCall();
+                    }
+                } else {
+                    console.error('Error in active call check response:', data);
+                    alert('Could not check for active calls. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error checking for active calls:', error);
+                alert('Could not check for active calls. Please try again.');
+            });
     }
     
     // Initiate a new call
     function initiateCall() {
         console.log('Initiating new call');
         
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        if (!csrfToken) {
+            console.error('CSRF token not found');
+            alert('Could not initiate call: CSRF token missing.');
+            return;
+        }
+        
         fetch(`/chat/${roomId}/voice-call/initiate/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                'X-CSRFToken': csrfToken
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.status === 'success') {
                 console.log('Call initiated successfully, call_id:', data.call_id);
@@ -492,10 +572,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if ('Notification' in window && Notification.permission !== 'granted') {
                     Notification.requestPermission();
                 }
+            } else {
+                console.error('Error in call initiation response:', data);
+                alert('Could not initiate call. Please try again.');
             }
         })
         .catch(error => {
             console.error('Error initiating call:', error);
+            alert('Could not initiate call. Please try again.');
         });
     }
     
@@ -503,14 +587,32 @@ document.addEventListener('DOMContentLoaded', function() {
     function joinExistingCall(callInfo) {
         console.log('Joining existing call:', callInfo);
         
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        if (!csrfToken) {
+            console.error('CSRF token not found');
+            alert('Could not join call: CSRF token missing.');
+            return;
+        }
+        
+        // Stop the ringtone if it's playing
+        if (window.activeRingtone) {
+            window.activeRingtone.pause();
+            window.activeRingtone = null;
+        }
+        
         fetch(`/voice-call/${callInfo.id}/join/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                'X-CSRFToken': csrfToken
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.status === 'success') {
                 console.log('Call joined successfully');
@@ -525,22 +627,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (callInfo.participants && callInfo.participants.length) {
                     callParticipantsElement.textContent = `With: ${callInfo.participants.join(', ')}`;
                 }
+                
+                // Hide incoming call modal if it's showing
+                if (incomingCallModal._isShown) {
+                    incomingCallModal.hide();
+                }
+                
+                // Show voice call modal
                 voiceCallModal.show();
                 
                 // Initialize WebRTC connection
                 setupWebRTC();
                 
-                // Start call timer
+                // Start call timer & polling
                 startCallTimer();
-                
-                // Start checking for incoming calls and poll for signaling
                 startIncomingCallsCheck();
                 pollCallStatus();
+            } else {
+                console.error('Error in call join response:', data);
+                alert('Could not join call. Please try again.');
+                currentCallId = null; // Reset the call ID since we couldn't join
             }
         })
         .catch(error => {
             console.error('Error joining call:', error);
             alert('Failed to join call. Please try again.');
+            currentCallId = null; // Reset the call ID since we couldn't join
         });
     }
     
@@ -556,7 +668,12 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Polling call status for call_id:', currentCallId);
         
         fetch(`/voice-call/${currentCallId}/status/`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.status === 'success') {
                     // Reset error count on success
@@ -595,16 +712,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     // More frequent if we have pending messages to send
                     const pollInterval = signallingServerMessages.length > 0 ? 2000 : 10000;
                     pollCallStatusTimeout = setTimeout(pollCallStatus, pollInterval);
+                } else {
+                    console.error('Error in call status response:', data);
+                    handleCallStatusError();
                 }
             })
             .catch(error => {
                 console.error('Error polling call status:', error);
-                callStatusErrorCount++;
-                
-                // Use exponential backoff for errors (max 1 minute interval)
-                const backoffDelay = Math.min(60000, 5000 * Math.pow(2, callStatusErrorCount));
-                pollCallStatusTimeout = setTimeout(pollCallStatus, backoffDelay);
+                handleCallStatusError();
             });
+    }
+    
+    function handleCallStatusError() {
+        callStatusErrorCount++;
+        
+        // Use exponential backoff for errors (max 1 minute interval)
+        const backoffDelay = Math.min(60000, 5000 * Math.pow(2, callStatusErrorCount));
+        
+        // If too many consecutive errors, end the call
+        if (callStatusErrorCount > 5) {
+            console.error('Too many call status errors, ending call');
+            endCall();
+            return;
+        }
+        
+        pollCallStatusTimeout = setTimeout(pollCallStatus, backoffDelay);
     }
     
     // Start call timer
@@ -657,26 +789,51 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('End call button clicked');
             
             if (currentCallId) {
-                fetch(`/voice-call/${currentCallId}/end/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Call ended on server:', data);
-                    if (data.status === 'success') {
+                endCallOnServer(currentCallId)
+                    .then(() => endCall())
+                    .catch(error => {
+                        console.error('Error ending call on server:', error);
+                        // Force end call locally even if the server request failed
                         endCall();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error ending call on server:', error);
-                    // Force end call even if the request failed
-                    endCall();
-                });
+                    });
             }
+        });
+    }
+    
+    function endCallOnServer(callId) {
+        return new Promise((resolve, reject) => {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            if (!csrfToken) {
+                console.error('CSRF token not found');
+                reject(new Error('CSRF token missing'));
+                return;
+            }
+            
+            fetch(`/voice-call/${callId}/end/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Call ended on server:', data);
+                if (data.status === 'success') {
+                    resolve();
+                } else {
+                    reject(new Error('Server returned error status'));
+                }
+            })
+            .catch(error => {
+                console.error('Error ending call on server:', error);
+                reject(error);
+            });
         });
     }
     
@@ -777,8 +934,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.activeRingtone = null;
                 }
                 
+                // Hide incoming call modal
                 incomingCallModal.hide();
-                joinExistingCall({ id: currentCallId });
+                
+                // Check if we have microphone permission before joining
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(tempStream => {
+                        // Stop temporary stream
+                        tempStream.getTracks().forEach(track => track.stop());
+                        
+                        // Now join the call
+                        joinExistingCall({ id: currentCallId });
+                    })
+                    .catch(error => {
+                        console.error('Microphone access denied:', error);
+                        alert('You need to allow microphone access to join the call.');
+                        currentCallId = null;
+                    });
             }
         });
     }
@@ -795,25 +967,55 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.activeRingtone = null;
                 }
                 
-                fetch(`/voice-call/${currentCallId}/decline/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Call declined successfully:', data);
-                    incomingCallModal.hide();
-                    currentCallId = null;
-                })
-                .catch(error => {
-                    console.error('Error declining call:', error);
-                    incomingCallModal.hide();
-                    currentCallId = null;
-                });
+                declineCallOnServer(currentCallId)
+                    .then(() => {
+                        console.log('Call declined successfully');
+                        incomingCallModal.hide();
+                        currentCallId = null;
+                    })
+                    .catch(error => {
+                        console.error('Error declining call:', error);
+                        incomingCallModal.hide();
+                        currentCallId = null;
+                    });
             }
+        });
+    }
+    
+    function declineCallOnServer(callId) {
+        return new Promise((resolve, reject) => {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            if (!csrfToken) {
+                console.error('CSRF token not found');
+                reject(new Error('CSRF token missing'));
+                return;
+            }
+            
+            fetch(`/voice-call/${callId}/decline/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Call declined response:', data);
+                if (data.status === 'success') {
+                    resolve(data);
+                } else {
+                    reject(new Error('Server returned error status'));
+                }
+            })
+            .catch(error => {
+                console.error('Error declining call:', error);
+                reject(error);
+            });
         });
     }
 
@@ -823,7 +1025,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (currentCallId) return; // Don't check if already in a call
         
         fetch(`/chat/${roomId}/active-call/`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 // Reset error count on success
                 incomingCallErrorCount = 0;
@@ -844,30 +1051,22 @@ document.addEventListener('DOMContentLoaded', function() {
                         currentCallId = callInfo.id;
                         
                         // Play ringtone
-                        try {
-                            const ringtone = new Audio('/static/sounds/call-ringtone.mp3');
-                            ringtone.loop = true;
-                            ringtone.play().catch(e => console.error('Error playing ringtone:', e));
-                            
-                            // Store ringtone to stop it later
-                            window.activeRingtone = ringtone;
-                        } catch (e) {
-                            console.error('Error with ringtone:', e);
-                        }
+                        playRingtone();
                         
                         // Show browser notification
-                        if ('Notification' in window && Notification.permission === 'granted') {
-                            new Notification('Incoming Call', {
-                                body: `${callInfo.initiator} is calling you`,
-                                icon: '/static/images/logo.png'
-                            });
-                        }
+                        showCallNotification(callInfo.initiator);
                     }
                 }
             })
             .catch(error => {
                 console.error('Error checking for incoming calls:', error);
                 incomingCallErrorCount++;
+                
+                // If too many consecutive errors, stop checking
+                if (incomingCallErrorCount > 5) {
+                    console.error('Too many incoming call check errors, stopping checks');
+                    stopIncomingCallsCheck();
+                }
             });
     }
     
@@ -875,7 +1074,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function startIncomingCallsCheck() {
         // Use a 3-second interval for responsive notifications
         if (!checkIncomingCallsInterval) {
+            incomingCallErrorCount = 0; // Reset error count
             checkIncomingCallsInterval = setInterval(checkForIncomingCalls, 3000);
+            
+            // Run an immediate check
+            checkForIncomingCalls();
         }
     }
     
