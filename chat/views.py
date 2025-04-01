@@ -1343,6 +1343,132 @@ def get_active_call(request, room_id):
     except ChatRoom.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Chat room does not exist'})
 
+@login_required
+def voice_call_status(request, call_id):
+    """Get status of a voice call and exchange signaling messages"""
+    try:
+        voice_call = VoiceCall.objects.get(id=call_id)
+        
+        # Check if user is a participant
+        if not voice_call.participants.filter(id=request.user.profile.id).exists():
+            return JsonResponse({'status': 'error', 'message': 'Not authorized'})
+        
+        # Process incoming signaling messages if any
+        if request.method == 'POST':
+            try:
+                data = json.loads(request.body)
+                signaling_message = data.get('signaling_message')
+                if signaling_message:
+                    # Store signaling message for other participants
+                    # In a real app, this would be stored in a database or Redis
+                    # For simplicity, we'll use a session-based approach
+                    
+                    # Create a key for this call's signaling messages
+                    call_messages_key = f'call_{call_id}_signaling_messages'
+                    
+                    # Get existing messages or initialize an empty list
+                    if not hasattr(request, 'session'):
+                        request.session = {}
+                    
+                    messages = request.session.get(call_messages_key, [])
+                    
+                    # Add sender info to the message
+                    signaling_message['sender'] = request.user.username
+                    signaling_message['timestamp'] = timezone.now().isoformat()
+                    
+                    # Add to messages list
+                    messages.append(signaling_message)
+                    
+                    # Store back in session (limit to last 20 messages)
+                    request.session[call_messages_key] = messages[-20:]
+                    request.session.modified = True
+            except json.JSONDecodeError:
+                pass
+        
+        # Get participants list
+        participants = list(voice_call.participants.values_list('user__username', flat=True))
+        
+        # Get signaling messages for this user (exclude own messages)
+        signaling_messages = []
+        call_messages_key = f'call_{call_id}_signaling_messages'
+        if hasattr(request, 'session') and call_messages_key in request.session:
+            all_messages = request.session.get(call_messages_key, [])
+            
+            # Filter to get only messages from other participants
+            signaling_messages = [
+                msg for msg in all_messages 
+                if msg.get('sender') != request.user.username
+            ]
+            
+            # Remove processed messages from session
+            request.session[call_messages_key] = [
+                msg for msg in all_messages 
+                if msg.get('sender') == request.user.username
+            ]
+            request.session.modified = True
+        
+        # Calculate duration if call is ongoing or completed
+        duration = None
+        if voice_call.status in ['ongoing', 'completed'] and voice_call.start_time:
+            if voice_call.end_time:
+                duration = (voice_call.end_time - voice_call.start_time).total_seconds()
+            else:
+                duration = (timezone.now() - voice_call.start_time).total_seconds()
+        
+        return JsonResponse({
+            'status': 'success',
+            'call_status': voice_call.status,
+            'participants': participants,
+            'duration': duration,
+            'signaling_messages': signaling_messages,
+            'initiator': voice_call.initiator.user.username
+        })
+    except VoiceCall.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Voice call does not exist'})
+
+@login_required
+def decline_voice_call(request, call_id):
+    """Decline an incoming voice call"""
+    try:
+        voice_call = VoiceCall.objects.get(id=call_id)
+        
+        # Check if user is a participant in the chat room
+        if not voice_call.room.participants.filter(id=request.user.profile.id).exists():
+            return JsonResponse({'status': 'error', 'message': 'Not authorized'})
+        
+        # Add system message that the call was declined
+        Message.objects.create(
+            room=voice_call.room,
+            sender=request.user.profile,
+            content=f"Declined voice call"
+        )
+        
+        # If this is the only participant, end the call
+        if voice_call.participants.count() <= 1:
+            voice_call.status = 'completed'
+            voice_call.end_time = timezone.now()
+            voice_call.save()
+            
+            # Send WebSocket notification about call end
+            channel_layer = get_channel_layer()
+            status_data = {
+                'call_id': voice_call.id,
+                'status': voice_call.status,
+                'end_time': voice_call.end_time.isoformat()
+            }
+            
+            async_to_sync(channel_layer.group_send)(
+                f'chat_{voice_call.room.id}',
+                {
+                    'type': 'call_status_update',
+                    'status_data': status_data
+                }
+            )
+        
+        return JsonResponse({'status': 'success', 'message': 'Call declined'})
+    except VoiceCall.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Voice call does not exist'})
+
 # Moderation Dashboard
 @user_passes_test(is_moderator)
 def moderation_dashboard(request):

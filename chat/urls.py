@@ -45,6 +45,8 @@ urlpatterns = [
     path('chat/<int:room_id>/voice-call/initiate/', views.initiate_voice_call, name='initiate_voice_call'),
     path('voice-call/<int:call_id>/join/', views.join_voice_call, name='join_voice_call'),
     path('voice-call/<int:call_id>/end/', views.end_voice_call, name='end_voice_call'),
+    path('voice-call/<int:call_id>/status/', views.voice_call_status, name='voice_call_status'),
+    path('voice-call/<int:call_id>/decline/', views.decline_voice_call, name='decline_voice_call'),
     path('chat/<int:room_id>/active-call/', views.get_active_call, name='get_active_call'),
     
     # Moderation routes
