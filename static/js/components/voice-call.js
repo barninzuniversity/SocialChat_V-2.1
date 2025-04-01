@@ -60,6 +60,38 @@ document.addEventListener('DOMContentLoaded', function() {
     let wsReconnectAttempts = 0;
     const MAX_RECONNECT_ATTEMPTS = 5;
     
+    // WebSocket status indicator elements
+    const wsStatus = document.getElementById('ws-status');
+    const wsConnecting = document.getElementById('ws-connecting');
+    const wsConnected = document.getElementById('ws-connected');
+    const wsError = document.getElementById('ws-error');
+    
+    // Show WebSocket status
+    function updateWebSocketStatus(status) {
+        if (!wsStatus) return;
+        
+        wsStatus.classList.remove('d-none');
+        
+        if (status === 'connecting') {
+            wsConnecting.classList.remove('d-none');
+            wsConnected.classList.add('d-none');
+            wsError.classList.add('d-none');
+        } else if (status === 'connected') {
+            wsConnecting.classList.add('d-none');
+            wsConnected.classList.remove('d-none');
+            wsError.classList.add('d-none');
+            
+            // Hide status after 3 seconds
+            setTimeout(() => {
+                wsStatus.classList.add('d-none');
+            }, 3000);
+        } else if (status === 'error') {
+            wsConnecting.classList.add('d-none');
+            wsConnected.classList.add('d-none');
+            wsError.classList.remove('d-none');
+        }
+    }
+
     // Initialize websocket connection unless in dev mode
     if (!isDevMode) {
         setupWebSocket();
@@ -85,6 +117,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function setupWebSocket() {
         try {
+            // Show connecting status
+            updateWebSocketStatus('connecting');
+            
             // For development, use relative URL to connect to WebSocket on same server
             // Instead of hardcoded domain
             const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -98,10 +133,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('WebSocket connection established for call notifications');
                 wsReconnectAttempts = 0; // Reset reconnection attempts on successful connection
                 
+                // Update status indicator
+                updateWebSocketStatus('connected');
+                
                 // Enable UI elements that depend on WebSocket
                 if (voiceCallBtn) {
                     voiceCallBtn.disabled = false;
                     voiceCallBtn.classList.remove('disabled');
+                }
+                
+                // Add a test message to verify the WebSocket is working
+                try {
+                    ws.send(JSON.stringify({
+                        'type': 'test',
+                        'message': 'WebSocket connection test',
+                        'username': document.querySelector('meta[name="username"]')?.content || 'Unknown'
+                    }));
+                    console.log('Test message sent successfully');
+                } catch (e) {
+                    console.error('Error sending test message:', e);
                 }
             };
             
@@ -116,6 +166,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else if (data.type === 'call_status_update') {
                         console.log('Call status update received:', data.status_data);
                         handleCallStatusUpdate(data.status_data);
+                    } else if (data.type === 'webrtc_signal') {
+                        console.log('WebRTC signaling message received:', data);
+                        if (data.call_id === currentCallId && data.signals && data.signals.length > 0) {
+                            // Process each signaling message
+                            data.signals.forEach(message => {
+                                handleSignalingMessage(message);
+                            });
+                        }
+                    } else if (data.type === 'test_response') {
+                        console.log('WebSocket test response received:', data.message);
+                        // Show a toast notification to indicate WebSocket is working
+                        if (typeof showToast === 'function') {
+                            showToast('WebSocket connection established successfully', 'success');
+                        }
                     }
                 } catch (e) {
                     console.error('Error processing WebSocket message:', e);
@@ -124,6 +188,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             ws.onclose = function(event) {
                 console.log('WebSocket connection closed. Code:', event.code, 'Reason:', event.reason);
+                
+                // Update status indicator
+                updateWebSocketStatus('error');
                 
                 // Disable UI elements that depend on WebSocket
                 if (voiceCallBtn) {
@@ -163,15 +230,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             ws.onerror = function(error) {
                 console.error('WebSocket error:', error);
+                // Update status indicator
+                updateWebSocketStatus('error');
+                
                 // Log additional connection details for debugging
                 console.log('WebSocket state:', ws.readyState);
                 console.log('Connection URL:', wsUrl);
-                
-                // Check if ASGI/WebSocket is configured properly
-                console.log('If running in development, make sure you:');
-                console.log('1. Have channels and daphne installed');
-                console.log('2. Run server with daphne or channels runserver');
-                console.log('3. Have proper routing in asgi.py and routing.py');
             };
         } catch (e) {
             console.error('Error setting up WebSocket:', e);

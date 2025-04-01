@@ -5,8 +5,11 @@ set -o errexit  # Exit on error
 set -o pipefail # Exit on pipe failure
 set -o nounset  # Exit on unset variable
 
-# Build the Python application
+# Build the Python application - ensure WebSocket dependencies are installed
 pip install -r requirements.txt
+
+# Explicitly install channels and daphne if not already in requirements
+pip install channels channels-redis daphne --no-deps --upgrade
 
 echo "Running migrations in a way that handles existing tables..."
 
@@ -169,7 +172,28 @@ EOL
 # Execute the script
 python fix_db_script.py
 
+# Verify ASGI/WebSocket configuration
+echo "Verifying ASGI and WebSocket configuration..."
+if grep -q "ASGI_APPLICATION" chat_project/settings.py; then
+    echo "✓ ASGI application configured in settings.py"
+else
+    echo "⚠ Warning: ASGI_APPLICATION not found in settings.py, WebSockets may not work properly"
+fi
+
+if grep -q "CHANNEL_LAYERS" chat_project/settings.py; then
+    echo "✓ Channel layers configured in settings.py"
+else
+    echo "⚠ Warning: CHANNEL_LAYERS not found in settings.py, WebSockets may not work properly"
+fi
+
+# Set environment variables for WebSockets if not already set
+if [ -z "${ASGI_THREADS:-}" ]; then
+    echo "Setting ASGI_THREADS=10 environment variable for better WebSocket performance"
+    export ASGI_THREADS=10
+fi
+
 # Collect static files
 python manage.py collectstatic --noinput
 
-echo "Build completed successfully!" 
+echo "Build completed successfully!"
+echo "WebSocket support is enabled. The application will run with Daphne ASGI server." 

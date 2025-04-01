@@ -51,24 +51,51 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             print(f"Received from user {self.user}: {text_data}")
             data = json.loads(text_data)
-            message = data['message']
-            username = data['username']
             
-            print(f"Broadcasting message to group: {self.room_group_name}")
-            # Send message to room group immediately without waiting for database save
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'chat_message',
-                    'message': message,
-                    'username': username,
-                    'timestamp': self.get_time_string()
-                }
-            )
+            # Handle different message types
+            message_type = data.get('type', 'chat_message')
             
-            # Save message to database in the background
-            if self.user.is_authenticated:
-                await self.save_message(message)
+            if message_type == 'chat_message':
+                # Handle regular chat messages
+                message = data['message']
+                username = data['username']
+                
+                print(f"Broadcasting message to group: {self.room_group_name}")
+                # Send message to room group immediately without waiting for database save
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'chat_message',
+                        'message': message,
+                        'username': username,
+                        'timestamp': self.get_time_string()
+                    }
+                )
+                
+                # Save message to database in the background
+                if self.user.is_authenticated:
+                    await self.save_message(message)
+            
+            elif message_type == 'webrtc_signal':
+                # Handle WebRTC signaling messages
+                print(f"Received WebRTC signal: {data}")
+                call_id = data.get('call_id')
+                signals = data.get('signals', [])
+                
+                if call_id and signals:
+                    # Forward to the group
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'webrtc_signal',
+                            'call_id': call_id,
+                            'signals': signals
+                        }
+                    )
+            
+            elif message_type == 'test':
+                # Just log test messages and don't act on them
+                print(f"Received test message from {data.get('username')}: {data.get('message')}")
                 
         except Exception as e:
             print(f"Error in receive: {str(e)}")
@@ -126,6 +153,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'type': 'call_status_update',
             'status_data': status_data
+        }))
+    
+    # Handle WebRTC signaling messages
+    async def webrtc_signal(self, event):
+        """Handle WebRTC signaling messages"""
+        print(f"Forwarding WebRTC signal to client: {event}")
+        await self.send(text_data=json.dumps({
+            'type': 'webrtc_signal',
+            'call_id': event.get('call_id'),
+            'signals': event.get('signals', [])
         }))
     
     @database_sync_to_async

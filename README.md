@@ -166,4 +166,51 @@ python manage.py runserver
 ## Acknowledgements
 - Bootstrap for the responsive UI framework
 - FontAwesome for iconography
-- HTMX for seamless page updates 
+- HTMX for seamless page updates
+
+## Voice Chat Troubleshooting
+
+If you encounter issues with the voice chat feature, follow these troubleshooting steps:
+
+### Local Development
+
+1. **Use the Daphne server**: WebSockets require an ASGI server to function properly. Run the application with:
+   ```
+   ./run_dev.sh
+   ```
+
+2. **Check for WebSocket status**: Look for the WebSocket status indicator next to the voice call button:
+   - Spinning icon: Connecting
+   - Green checkmark: Connected
+   - Red exclamation: Error
+
+3. **Browser console errors**: Check your browser's developer console (F12) for specific WebSocket errors.
+
+4. **Test in Private/Incognito mode**: Some browser extensions can interfere with WebSockets.
+
+### Production Deployment
+
+1. **Ensure Daphne is running**: The Procfile should use Daphne to serve the application.
+
+2. **Check your hosting provider**: Make sure your hosting provider (Render.com, Heroku, etc.) supports WebSockets.
+
+3. **Check the logs**: Look for error messages related to WebSockets in your server logs.
+
+4. **HTTP vs HTTPS**: WebSockets use `ws://` protocol for HTTP and `wss://` for HTTPS. Make sure you're using the correct protocol.
+
+5. **Add dev_mode parameter**: If all else fails, you can add `?dev_mode=true` to your URL to use HTTP polling as a fallback.
+
+### Known Issues
+
+- **Render.com Free Tier**: WebSockets may have limitations on the free tier.
+- **Mixed Content**: Some browsers block WebSocket connections if the page is loaded over HTTPS but the WebSocket tries to connect over unencrypted ws://.
+- **Proxy Interference**: Corporate proxies may block WebSocket connections.
+
+### WebRTC Requirements
+
+For voice calls to work, make sure:
+
+1. The browser supports WebRTC (modern browsers like Chrome, Firefox, Edge do)
+2. The user has granted microphone permissions
+3. Both users are in the same chat room
+4. The browser is not in battery saving mode (which can restrict background processes) 
