@@ -218,6 +218,43 @@ document.addEventListener('DOMContentLoaded', function() {
                 peerConnection.addTrack(track, callStream);
             });
             
+            // Set up audio recording and transmission
+            const mediaRecorder = new MediaRecorder(callStream);
+            const audioChunks = [];
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    audioChunks.push(event.data);
+                    
+                    // Convert audio data to base64 and send
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        if (!isMuted && peerConnection.connectionState === 'connected') {
+                            const base64Audio = reader.result;
+                            // Send audio data through data channel
+                            if (dataChannel && dataChannel.readyState === 'open') {
+                                dataChannel.send(base64Audio);
+                            }
+                        }
+                    };
+                    reader.readAsDataURL(event.data);
+                }
+            };
+            
+            // Start recording in chunks
+            mediaRecorder.start(1000); // Capture in 1-second chunks
+            
+            // Set up data channel for audio transmission
+            dataChannel = peerConnection.createDataChannel('audio');
+            dataChannel.onopen = () => {
+                console.log('Data channel opened');
+            };
+            dataChannel.onmessage = (event) => {
+                // Play received audio
+                const audio = new Audio(event.data);
+                audio.play().catch(e => console.error('Error playing received audio:', e));
+            };
+            
             // Set up ICE candidate handling
             peerConnection.onicecandidate = handleICECandidate;
             
