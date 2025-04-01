@@ -400,7 +400,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Convert audio data to base64 and send
                     const reader = new FileReader();
                     reader.onloadend = () => {
-                        if (!isMuted && peerConnection.connectionState === 'connected') {
+                        // Check that peerConnection exists and is connected before sending
+                        if (peerConnection && peerConnection.connectionState === 'connected' && !isMuted) {
                             const base64Audio = reader.result;
                             // Send audio data through data channel
                             if (dataChannel && dataChannel.readyState === 'open') {
@@ -508,11 +509,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Handle negotiation needed
+    // Handle negotiation needed with stability check
     async function handleNegotiationNeeded() {
+        // Check that the connection is in a stable state before renegotiating
+        if (!peerConnection || peerConnection.signalingState !== 'stable') {
+            console.log('Skipping negotiation: connection not in stable state');
+            return;
+        }
         try {
             console.log('Negotiation needed event fired');
-            
             if (isCallInitiator) {
                 await createOfferAndSendSignal();
             }
@@ -521,8 +526,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Create and send offer
+    // Create and send offer with stability check
     async function createOfferAndSendSignal() {
+        // Ensure the connection exists and is stable before creating an offer
+        if (!peerConnection || peerConnection.signalingState !== 'stable') {
+            console.warn('Cannot create offer because connection is not stable');
+            return;
+        }
         try {
             console.log('Creating offer');
             const offer = await peerConnection.createOffer({
@@ -544,13 +554,10 @@ document.addEventListener('DOMContentLoaded', function() {
             
         } catch (error) {
             console.error('Error creating offer:', error);
-            
-            // Provide more detailed error for common issues
             if (error.name === 'InvalidStateError') {
                 console.warn('Invalid state - the connection might be closing or already closed');
             } else if (error.message && error.message.includes('m-lines')) {
-                console.warn('SDP format error - this often happens when WebRTC state gets out of sync');
-                // Try to recover by creating a completely new connection
+                console.warn('SDP format error - renegotiation error detected. Resetting connection.');
                 if (peerConnection) {
                     peerConnection.close();
                     peerConnection = null;
@@ -1325,4 +1332,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     console.log('Voice call system initialized');
-}); 
+});
