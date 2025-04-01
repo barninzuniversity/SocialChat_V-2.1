@@ -41,47 +41,72 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // WebSocket connection for call notifications
     let ws = null;
-    try {
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat/${roomId}/`;
-        ws = new WebSocket(wsUrl);
-        
-        ws.onopen = function() {
-            console.log('WebSocket connection established for call notifications');
-        };
-        
-        ws.onmessage = function(event) {
-            try {
-                const data = JSON.parse(event.data);
-                console.log('WebSocket message received:', data);
+    let wsReconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 5;
+    
+    function setupWebSocket() {
+        try {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat/${roomId}/`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function() {
+                console.log('WebSocket connection established for call notifications');
+                wsReconnectAttempts = 0; // Reset reconnection attempts on successful connection
+            };
+            
+            ws.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('WebSocket message received:', data);
+                    
+                    if (data.type === 'call_notification') {
+                        console.log('Call notification received:', data.call_data);
+                        handleCallNotification(data.call_data);
+                    } else if (data.type === 'call_status_update') {
+                        console.log('Call status update received:', data.status_data);
+                        handleCallStatusUpdate(data.status_data);
+                    }
+                } catch (e) {
+                    console.error('Error processing WebSocket message:', e);
+                }
+            };
+            
+            ws.onclose = function(event) {
+                console.log('WebSocket connection closed. Code:', event.code, 'Reason:', event.reason);
                 
-                if (data.type === 'call_notification') {
-                    console.log('Call notification received:', data.call_data);
-                    handleCallNotification(data.call_data);
-                } else if (data.type === 'call_status_update') {
-                    console.log('Call status update received:', data.status_data);
-                    handleCallStatusUpdate(data.status_data);
+                // Attempt to reconnect if not a normal closure and within max attempts
+                if (event.code !== 1000 && event.code !== 1001 && wsReconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                    wsReconnectAttempts++;
+                    const delay = Math.min(1000 * Math.pow(2, wsReconnectAttempts), 30000); // Exponential backoff
+                    console.log(`Attempting to reconnect in ${delay/1000} seconds... (Attempt ${wsReconnectAttempts})`);
+                    
+                    setTimeout(() => {
+                        if (ws.readyState === WebSocket.CLOSED) {
+                            setupWebSocket();
+                        }
+                    }, delay);
+                } else if (wsReconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                    console.error('Maximum WebSocket reconnection attempts reached');
+                    alert('Connection to voice chat server lost. Please refresh the page to reconnect.');
                 }
-            } catch (e) {
-                console.error('Error processing WebSocket message:', e);
-            }
-        };
-        
-        ws.onclose = function() {
-            console.log('WebSocket connection closed. Attempting to reconnect...');
-            setTimeout(() => {
-                if (ws && ws.readyState === WebSocket.CLOSED) {
-                    ws = new WebSocket(wsUrl);
-                }
-            }, 3000);
-        };
-        
-        ws.onerror = function(error) {
-            console.error('WebSocket error:', error);
-        };
-    } catch (e) {
-        console.error('Error setting up WebSocket:', e);
+            };
+            
+            ws.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                // Log additional connection details for debugging
+                console.log('WebSocket state:', ws.readyState);
+                console.log('Connection URL:', wsUrl);
+            };
+        } catch (e) {
+            console.error('Error setting up WebSocket:', e);
+            alert('Could not connect to voice chat server. Please check your connection and refresh the page.');
+        }
     }
+    
+    // Initialize WebSocket connection
+    setupWebSocket();
     
     // Handle call notification from WebSocket
     function handleCallNotification(callData) {
