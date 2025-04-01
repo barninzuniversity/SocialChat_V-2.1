@@ -37,6 +37,84 @@ document.addEventListener('DOMContentLoaded', function() {
     let checkIncomingCallsInterval = null;
     let callStatusErrorCount = 0;
     
+    // WebSocket connection for call notifications
+    let ws = null;
+    try {
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat/${roomId}/`;
+        ws = new WebSocket(wsUrl);
+        
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'call_notification') {
+                handleCallNotification(data.call_data);
+            } else if (data.type === 'call_status_update') {
+                handleCallStatusUpdate(data.status_data);
+            }
+        };
+        
+        ws.onclose = function() {
+            console.log('WebSocket connection closed. Attempting to reconnect...');
+            setTimeout(() => {
+                if (ws.readyState === WebSocket.CLOSED) {
+                    ws = new WebSocket(wsUrl);
+                }
+            }, 3000);
+        };
+    } catch (e) {
+        console.error('Error setting up WebSocket:', e);
+    }
+    
+    // Handle call notification from WebSocket
+    function handleCallNotification(callData) {
+        if (currentCallId) return; // Don't show notification if already in a call
+        
+        const username = document.querySelector('meta[name="username"]')?.content;
+        if (callData.initiator === username) return; // Don't show notification to the caller
+        
+        // Show incoming call UI
+        incomingCallerElement.textContent = `${callData.initiator} is calling...`;
+        incomingCallModal.show();
+        
+        // Store call ID
+        currentCallId = callData.id;
+        
+        // Play ringtone
+        try {
+            const ringtone = new Audio('/static/sounds/call-ringtone.mp3');
+            ringtone.loop = true;
+            ringtone.play().catch(e => console.error('Error playing ringtone:', e));
+            
+            // Store ringtone to stop it later
+            window.activeRingtone = ringtone;
+        } catch (e) {
+            console.error('Error with ringtone:', e);
+        }
+        
+        // Show browser notification if supported
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('Incoming Call', {
+                body: `${callData.initiator} is calling you`,
+                icon: '/static/images/logo.png'
+            });
+        }
+    }
+    
+    // Handle call status update from WebSocket
+    function handleCallStatusUpdate(statusData) {
+        if (statusData.call_id !== currentCallId) return;
+        
+        if (statusData.status === 'completed') {
+            endCall();
+        } else if (statusData.status === 'ongoing') {
+            callStatusElement.textContent = 'In call';
+            if (statusData.participants && statusData.participants.length) {
+                callParticipantsElement.textContent = `With: ${statusData.participants.join(', ')}`;
+            }
+        }
+    }
+    
     // WebRTC configuration
     const configuration = {
         iceServers: [
@@ -540,9 +618,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Start checking for incoming calls
     function startIncomingCallsCheck() {
-        // Use a 15-second interval instead of 5 seconds to reduce server load
+        // Use a 5-second interval for more responsive notifications
         if (!checkIncomingCallsInterval) {
-            checkIncomingCallsInterval = setInterval(checkForIncomingCalls, 15000);
+            checkIncomingCallsInterval = setInterval(checkForIncomingCalls, 5000);
         }
     }
     
@@ -553,6 +631,15 @@ document.addEventListener('DOMContentLoaded', function() {
             checkIncomingCallsInterval = null;
         }
     }
+    
+    // Clean up WebSocket on page unload
+    window.addEventListener('beforeunload', function() {
+        if (ws) {
+            ws.close();
+        }
+        stopIncomingCallsCheck();
+        endCall();
+    });
     
     // Initial check for incoming calls
     startIncomingCallsCheck();

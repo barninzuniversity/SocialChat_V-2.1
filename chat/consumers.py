@@ -110,6 +110,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'timestamp': timestamp
         }))
     
+    # Handle call notifications
+    async def call_notification(self, event):
+        """Handle call notifications"""
+        call_data = event['call_data']
+        await self.send(text_data=json.dumps({
+            'type': 'call_notification',
+            'call_data': call_data
+        }))
+
+    # Handle call status updates
+    async def call_status_update(self, event):
+        """Handle call status updates"""
+        status_data = event['status_data']
+        await self.send(text_data=json.dumps({
+            'type': 'call_status_update',
+            'status_data': status_data
+        }))
+    
     @database_sync_to_async
     def save_message(self, message):
         try:

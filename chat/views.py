@@ -27,6 +27,8 @@ import logging
 from django.db.models import F
 from django.db.models.functions import Concat
 from django.db import connection
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 # Dictionary to store message queues for each chat room
 message_queues = {}
@@ -1164,6 +1166,25 @@ def initiate_voice_call(request, room_id):
             content=f"Started a voice call"
         )
         
+        # Send WebSocket notification to all participants
+        channel_layer = get_channel_layer()
+        call_data = {
+            'id': voice_call.id,
+            'initiator': request.user.username,
+            'status': voice_call.status,
+            'start_time': voice_call.start_time.isoformat()
+        }
+        
+        # Send to all participants except the initiator
+        for participant in chat_room.participants.exclude(id=request.user.profile.id):
+            async_to_sync(channel_layer.group_send)(
+                f'chat_{room_id}',
+                {
+                    'type': 'call_notification',
+                    'call_data': call_data
+                }
+            )
+        
         return JsonResponse({
             'status': 'success', 
             'call_id': voice_call.id,
@@ -1190,6 +1211,22 @@ def join_voice_call(request, call_id):
         if voice_call.status == 'initiated':
             voice_call.status = 'ongoing'
             voice_call.save()
+            
+            # Send WebSocket notification about call status update
+            channel_layer = get_channel_layer()
+            status_data = {
+                'call_id': voice_call.id,
+                'status': voice_call.status,
+                'participants': list(voice_call.participants.values_list('user__username', flat=True))
+            }
+            
+            async_to_sync(channel_layer.group_send)(
+                f'chat_{voice_call.room.id}',
+                {
+                    'type': 'call_status_update',
+                    'status_data': status_data
+                }
+            )
         
         # Add user as a participant if not already
         if not voice_call.participants.filter(id=request.user.profile.id).exists():
@@ -1239,6 +1276,22 @@ def end_voice_call(request, call_id):
             room=voice_call.room,
             sender=request.user.profile,
             content=f"Ended the voice call"
+        )
+        
+        # Send WebSocket notification about call end
+        channel_layer = get_channel_layer()
+        status_data = {
+            'call_id': voice_call.id,
+            'status': voice_call.status,
+            'end_time': voice_call.end_time.isoformat()
+        }
+        
+        async_to_sync(channel_layer.group_send)(
+            f'chat_{voice_call.room.id}',
+            {
+                'type': 'call_status_update',
+                'status_data': status_data
+            }
         )
         
         # Calculate the duration
