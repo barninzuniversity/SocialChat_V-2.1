@@ -16,6 +16,22 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
+    // Add a dev mode option to avoid using WebSockets
+    const devModeParam = new URLSearchParams(window.location.search).get('dev_mode');
+    const isDevMode = devModeParam === 'true' || devModeParam === '1';
+    
+    if (isDevMode) {
+        console.log('Running in development mode - WebSocket will be disabled');
+        // Add a dev mode indicator
+        const devIndicator = document.createElement('span');
+        devIndicator.textContent = 'DEV';
+        devIndicator.className = 'badge bg-warning ms-1 small';
+        devIndicator.title = 'Running in development mode';
+        if (voiceCallBtn.parentNode) {
+            voiceCallBtn.parentNode.insertBefore(devIndicator, voiceCallBtn.nextSibling);
+        }
+    }
+
     const callStatusElement = document.getElementById('call-status');
     const callParticipantsElement = document.getElementById('call-participants');
     const callTimerElement = document.getElementById('call-timer');
@@ -44,16 +60,49 @@ document.addEventListener('DOMContentLoaded', function() {
     let wsReconnectAttempts = 0;
     const MAX_RECONNECT_ATTEMPTS = 5;
     
+    // Initialize websocket connection unless in dev mode
+    if (!isDevMode) {
+        setupWebSocket();
+    } else {
+        console.log('Dev mode: Using HTTP polling instead of WebSockets');
+        // Start HTTP polling as fallback in dev mode
+        startIncomingCallsCheck();
+    }
+
+    // Voice call button click handler
+    voiceCallBtn.addEventListener('click', function() {
+        console.log('Voice call button clicked');
+        
+        // Check if browser supports WebRTC
+        if (!window.RTCPeerConnection) {
+            alert('Your browser does not support WebRTC. Please use a modern browser like Chrome, Firefox, or Edge.');
+            return;
+        }
+        
+        // First check if there's an active call
+        checkForActiveCall();
+    });
+    
     function setupWebSocket() {
         try {
+            // For development, use relative URL to connect to WebSocket on same server
+            // Instead of hardcoded domain
             const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${wsProtocol}//${window.location.host}/ws/chat/${roomId}/`;
+            
+            console.log('Attempting WebSocket connection to:', wsUrl);
             
             ws = new WebSocket(wsUrl);
             
             ws.onopen = function() {
                 console.log('WebSocket connection established for call notifications');
                 wsReconnectAttempts = 0; // Reset reconnection attempts on successful connection
+                
+                // Enable UI elements that depend on WebSocket
+                if (voiceCallBtn) {
+                    voiceCallBtn.disabled = false;
+                    voiceCallBtn.classList.remove('disabled');
+                }
             };
             
             ws.onmessage = function(event) {
@@ -76,6 +125,13 @@ document.addEventListener('DOMContentLoaded', function() {
             ws.onclose = function(event) {
                 console.log('WebSocket connection closed. Code:', event.code, 'Reason:', event.reason);
                 
+                // Disable UI elements that depend on WebSocket
+                if (voiceCallBtn) {
+                    voiceCallBtn.disabled = true;
+                    voiceCallBtn.classList.add('disabled');
+                    voiceCallBtn.setAttribute('title', 'Voice call unavailable - Connection error');
+                }
+                
                 // Attempt to reconnect if not a normal closure and within max attempts
                 if (event.code !== 1000 && event.code !== 1001 && wsReconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
                     wsReconnectAttempts++;
@@ -89,7 +145,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     }, delay);
                 } else if (wsReconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
                     console.error('Maximum WebSocket reconnection attempts reached');
-                    alert('Connection to voice chat server lost. Please refresh the page to reconnect.');
+                    console.log('Falling back to HTTP polling for call status');
+                    
+                    // Enable UI but with fallback message
+                    if (voiceCallBtn) {
+                        voiceCallBtn.disabled = false;
+                        voiceCallBtn.classList.remove('disabled');
+                        voiceCallBtn.setAttribute('title', 'Using HTTP fallback (slower)');
+                    }
+                    
+                    // Start HTTP polling for incoming calls as fallback
+                    if (!checkIncomingCallsInterval) {
+                        startIncomingCallsCheck();
+                    }
                 }
             };
             
@@ -98,15 +166,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Log additional connection details for debugging
                 console.log('WebSocket state:', ws.readyState);
                 console.log('Connection URL:', wsUrl);
+                
+                // Check if ASGI/WebSocket is configured properly
+                console.log('If running in development, make sure you:');
+                console.log('1. Have channels and daphne installed');
+                console.log('2. Run server with daphne or channels runserver');
+                console.log('3. Have proper routing in asgi.py and routing.py');
             };
         } catch (e) {
             console.error('Error setting up WebSocket:', e);
-            alert('Could not connect to voice chat server. Please check your connection and refresh the page.');
+            
+            // Enable UI with fallback message
+            if (voiceCallBtn) {
+                voiceCallBtn.disabled = false;
+                voiceCallBtn.classList.remove('disabled');
+                voiceCallBtn.setAttribute('title', 'Using HTTP fallback (slower)');
+            }
+            
+            // Start HTTP polling as fallback
+            if (!checkIncomingCallsInterval) {
+                startIncomingCallsCheck();
+            }
         }
     }
-    
-    // Initialize WebSocket connection
-    setupWebSocket();
     
     // Handle call notification from WebSocket
     function handleCallNotification(callData) {
@@ -398,6 +480,19 @@ document.addEventListener('DOMContentLoaded', function() {
             
         } catch (error) {
             console.error('Error creating offer:', error);
+            
+            // Provide more detailed error for common issues
+            if (error.name === 'InvalidStateError') {
+                console.warn('Invalid state - the connection might be closing or already closed');
+            } else if (error.message && error.message.includes('m-lines')) {
+                console.warn('SDP format error - this often happens when WebRTC state gets out of sync');
+                // Try to recover by creating a completely new connection
+                if (peerConnection) {
+                    peerConnection.close();
+                    peerConnection = null;
+                    setupWebRTC();
+                }
+            }
         }
     }
     
@@ -464,9 +559,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Send pending signaling messages to peer
+    // Send pending signaling messages to peer via HTTP API (WebSocket fallback)
     function sendPendingSignallingMessages() {
-        if (signallingServerMessages.length > 0 && peerConnection && currentCallId) {
+        if (signallingServerMessages.length > 0 && currentCallId) {
             console.log('Sending pending signaling messages:', signallingServerMessages);
             
             // Clone the messages array since we'll be emptying it
@@ -474,6 +569,20 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Clear the pending messages
             signallingServerMessages = [];
+            
+            // First try to send via WebSocket if available
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log('Sending signaling messages via WebSocket');
+                ws.send(JSON.stringify({
+                    type: 'webrtc_signal',
+                    call_id: currentCallId,
+                    signals: messagesToSend
+                }));
+                return;
+            }
+            
+            // Fallback to HTTP API
+            console.log('WebSocket unavailable, sending via HTTP API');
             
             // Send messages to the server for distribution to peers
             messagesToSend.forEach(message => {
@@ -487,23 +596,28 @@ document.addEventListener('DOMContentLoaded', function() {
                         signaling_message: message
                     })
                 })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status !== 'success') {
-                        console.error('Error sending signaling message:', data);
-                        // Put message back in queue if sending failed
-                        signallingServerMessages.push(message);
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Signaling message sent successfully:', data);
                 })
                 .catch(error => {
                     console.error('Error sending signaling message:', error);
-                    // Put message back in queue if sending failed
+                    // Re-queue the message for retry
                     signallingServerMessages.push(message);
+                    
+                    // Try again later with exponential backoff
+                    setTimeout(() => {
+                        if (signallingServerMessages.length > 0) {
+                            sendPendingSignallingMessages();
+                        }
+                    }, 2000); // 2-second delay before retry
                 });
             });
-            
-            // Poll more frequently when we have pending messages to send
-            pollCallStatus();
         }
     }
     
