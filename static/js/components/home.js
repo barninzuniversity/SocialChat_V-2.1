@@ -172,8 +172,8 @@ document.addEventListener('DOMContentLoaded', function() {
       const videoInput = document.getElementById('id_videos');
       const uploadDropZone = document.getElementById('upload-drop-zone');
       const previewContainer = document.getElementById('preview-container');
-      const selectedFiles = document.getElementById('selected-files');
-      const removeFilesBtn = document.getElementById('remove-files');
+      const selectedFiles = document.getElementById('files-preview-container');
+      const removeFilesBtn = document.getElementById('remove-all-files');
       
       // File preview function
       const previewFiles = function(files, fileType) {
