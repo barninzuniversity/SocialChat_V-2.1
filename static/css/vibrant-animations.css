@@ -1,0 +1,274 @@
+/* Vibrant Animations for SocialChat
+   Always-on animations with high visibility */
+
+/* Animation Variables - High Contrast Colors */
+:root {
+    --anim-primary: #4361ee;
+    --anim-secondary: #3a0ca3;
+    --anim-accent: #f72585;
+    --anim-highlight: #4cc9f0;
+    --anim-contrast: #7209b7;
+  
+    /* Higher opacity values for better visibility */
+    --anim-opacity-high: 0.9;
+    --anim-opacity-medium: 0.6;
+    --anim-opacity-low: 0.5;
+  
+    /* Animation speeds */
+    --anim-speed-slow: 20s;
+    --anim-speed-medium: 12s;
+    --anim-speed-fast: 6s;
+  }
+  
+  /* Dark mode adjustments */
+  body.dark {
+    --anim-primary: #4cc9f0;
+    --anim-secondary: #f72585;
+    --anim-accent: #7209b7;
+    --anim-highlight: #4361ee;
+    --anim-contrast: #3a0ca3;
+  
+    /* Even higher opacity for dark mode */
+    --anim-opacity-high: 0.6;
+    --anim-opacity-medium: 0.4;
+    --anim-opacity-low: 0.2;
+  }
+  
+  /* Main animation container */
+  .sc-animation-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1000;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  
+  /* Animated gradient background */
+  .sc-gradient-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      45deg,
+      rgba(67, 97, 238, var(--anim-opacity-medium)) 0%,
+      rgba(58, 12, 163, var(--anim-opacity-medium)) 50%,
+      rgba(247, 37, 133, var(--anim-opacity-medium)) 100%
+    );
+    background-size: 400% 400%;
+    animation: sc-gradient-shift var(--anim-speed-slow) ease infinite;
+  }
+  
+  @keyframes sc-gradient-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+  
+  /* Animated orbs */
+  .sc-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: var(--anim-opacity-medium);
+  }
+  
+  .sc-orb-1 {
+    width: 300px;
+    height: 300px;
+    background-color: var(--anim-primary);
+    top: -100px;
+    right: -100px;
+    animation: sc-float var(--anim-speed-slow) ease-in-out infinite alternate;
+  }
+  
+  .sc-orb-2 {
+    width: 250px;
+    height: 250px;
+    background-color: var(--anim-accent);
+    bottom: -50px;
+    left: -50px;
+    animation: sc-float var(--anim-speed-medium) ease-in-out infinite alternate-reverse;
+  }
+  
+  .sc-orb-3 {
+    width: 200px;
+    height: 200px;
+    background-color: var(--anim-highlight);
+    top: 40%;
+    left: 25%;
+    animation: sc-pulse var(--anim-speed-medium) ease-in-out infinite;
+  }
+  
+  @keyframes sc-float {
+    0% {
+      transform: translate(0, 0);
+    }
+    100% {
+      transform: translate(50px, 50px);
+    }
+  }
+  
+  @keyframes sc-pulse {
+    0% {
+      transform: scale(1);
+      opacity: var(--anim-opacity-medium);
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: var(--anim-opacity-high);
+    }
+    100% {
+      transform: scale(1);
+      opacity: var(--anim-opacity-medium);
+    }
+  }
+  
+  /* Animated particles */
+  .sc-particles-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .sc-particle {
+    position: absolute;
+    border-radius: 50%;
+    opacity: var(--anim-opacity-high);
+    animation: sc-particle-float 15s ease-in-out infinite;
+  }
+  
+  @keyframes sc-particle-float {
+    0% {
+      transform: translate(0, 0);
+    }
+    25% {
+      transform: translate(50px, 50px);
+    }
+    50% {
+      transform: translate(100px, 0);
+    }
+    75% {
+      transform: translate(50px, -50px);
+    }
+    100% {
+      transform: translate(0, 0);
+    }
+  }
+  
+  /* Animated waves */
+  .sc-waves-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  .sc-wave {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 200%;
+    height: 100px;
+    background-repeat: repeat-x;
+    transform-origin: center bottom;
+  }
+  
+  .sc-wave-1 {
+    background-color: rgba(67, 97, 238, var(--anim-opacity-low));
+    height: 100px;
+    animation: sc-wave-animation var(--anim-speed-slow) linear infinite;
+    z-index: 1;
+    opacity: var(--anim-opacity-medium);
+    border-radius: 100% 100% 0 0;
+  }
+  
+  .sc-wave-2 {
+    background-color: rgba(247, 37, 133, var(--anim-opacity-low));
+    height: 80px;
+    animation: sc-wave-animation calc(var(--anim-speed-slow) * 0.8) linear infinite;
+    animation-delay: -5s;
+    z-index: 2;
+    opacity: var(--anim-opacity-medium);
+    border-radius: 100% 100% 0 0;
+  }
+  
+  .sc-wave-3 {
+    background-color: rgba(76, 201, 240, var(--anim-opacity-low));
+    height: 60px;
+    animation: sc-wave-animation calc(var(--anim-speed-slow) * 0.6) linear infinite;
+    animation-delay: -2s;
+    z-index: 3;
+    opacity: var(--anim-opacity-medium);
+    border-radius: 100% 100% 0 0;
+  }
+  
+  @keyframes sc-wave-animation {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+  
+  /* Page-specific animation styles */
+  .home-page .sc-orb-1 {
+    opacity: var(--anim-opacity-high);
+    width: 400px;
+    height: 400px;
+  }
+  
+  .profile-page .sc-wave-1 {
+    background-color: rgba(247, 37, 133, var(--anim-opacity-medium));
+  }
+  
+  .chat-page .sc-particles-container {
+    opacity: var(--anim-opacity-high);
+  }
+  
+  .auth-page .sc-gradient-bg {
+    background: linear-gradient(
+      135deg,
+      rgba(67, 97, 238, var(--anim-opacity-high)) 0%,
+      rgba(247, 37, 133, var(--anim-opacity-high)) 100%
+    );
+  }
+  
+  /* Mobile optimizations */
+  @media (max-width: 768px) {
+    .sc-orb {
+      opacity: var(--anim-opacity-medium);
+    }
+  
+    .sc-orb-1 {
+      width: 200px;
+      height: 200px;
+    }
+  
+    .sc-orb-2 {
+      width: 150px;
+      height: 150px;
+    }
+  
+    .sc-orb-3 {
+      width: 100px;
+      height: 100px;
+    }
+  }
+  
+  

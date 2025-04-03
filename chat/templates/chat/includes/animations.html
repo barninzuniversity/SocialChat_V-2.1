@@ -1,0 +1,54 @@
+{% load static %}
+
+<!-- Background Animation -->
+<div class="bg-animation-container"></div>
+
+<style>
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+}
+
+.bg-animation-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.custom-animation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, rgba(245, 158, 11, 0.1) 0%, transparent 70%);
+  animation: pulse 4s infinite;
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => {
+    const container = document.querySelector('.bg-animation-container');
+    if (container) {
+      const customElement = document.createElement('div');
+      customElement.className = 'custom-animation';
+      container.appendChild(customElement);
+    }
+  }, 100);
+});
+</script>

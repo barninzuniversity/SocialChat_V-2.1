@@ -1,0 +1,259 @@
+/* Full Page Background Animations
+   Provides visually captivating background effects for the entire page */
+
+/* Animation Variables */
+:root {
+    --primary-color: #4f46e5;
+    --secondary-color: #10b981;
+    --accent-color: #f59e0b;
+  
+    --primary-transparent: rgba(79, 70, 229, 0.05);
+    --secondary-transparent: rgba(16, 185, 129, 0.05);
+    --accent-transparent: rgba(245, 158, 11, 0.05);
+  
+    --animation-speed-slow: 30s;
+    --animation-speed-medium: 20s;
+    --animation-speed-fast: 10s;
+  }
+  
+  /* Dark mode variables */
+  body.dark {
+    --primary-transparent: rgba(99, 102, 241, 0.08);
+    --secondary-transparent: rgba(52, 211, 153, 0.08);
+    --accent-transparent: rgba(251, 191, 36, 0.08);
+  }
+  
+  /* Main animation container */
+  .fullpage-animation-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1000;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  
+  /* Gradient Background */
+  .gradient-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      45deg,
+      var(--primary-transparent) 0%,
+      var(--secondary-transparent) 50%,
+      var(--accent-transparent) 100%
+    );
+    background-size: 400% 400%;
+    animation: gradientShift var(--animation-speed-medium) ease infinite;
+  }
+  
+  @keyframes gradientShift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+  
+  /* Gradient Pulse */
+  .gradient-pulse {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at center, var(--primary-transparent) 0%, rgba(0, 0, 0, 0) 70%);
+    animation: pulsate var(--animation-speed-medium) ease-in-out infinite;
+  }
+  
+  @keyframes pulsate {
+    0% {
+      transform: scale(1);
+      opacity: 0.5;
+    }
+    50% {
+      transform: scale(1.5);
+      opacity: 0.2;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 0.5;
+    }
+  }
+  
+  /* Particles */
+  .particles-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .particle {
+    position: absolute;
+    background-color: var(--primary-transparent);
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+  }
+  
+  /* Waves */
+  .waves-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  .wave {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 200%;
+    height: 100px;
+    background-repeat: repeat-x;
+    transform-origin: center bottom;
+  }
+  
+  .wave-1 {
+    background-color: var(--primary-transparent);
+    height: 100px;
+    animation: wave-animation var(--animation-speed-slow) linear infinite;
+    z-index: 1;
+    opacity: 0.5;
+  }
+  
+  .wave-2 {
+    background-color: var(--secondary-transparent);
+    height: 100px;
+    animation: wave-animation calc(var(--animation-speed-slow) * 0.8) linear infinite;
+    animation-delay: -5s;
+    z-index: 2;
+    opacity: 0.5;
+  }
+  
+  .wave-3 {
+    background-color: var(--accent-transparent);
+    height: 100px;
+    animation: wave-animation calc(var(--animation-speed-slow) * 0.6) linear infinite;
+    animation-delay: -2s;
+    z-index: 3;
+    opacity: 0.5;
+  }
+  
+  @keyframes wave-animation {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+  
+  /* Floating Elements */
+  .floating-elements-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  .floating-element {
+    position: absolute;
+    opacity: 0.05;
+    pointer-events: none;
+  }
+  
+  .floating-element.circle {
+    border-radius: 50%;
+    background-color: var(--primary-color);
+  }
+  
+  .floating-element.square {
+    border-radius: 4px;
+    background-color: var(--secondary-color);
+  }
+  
+  .floating-element.triangle {
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-bottom: 40px solid var(--accent-color);
+    background-color: transparent;
+  }
+  
+  /* Spotlight Effect */
+  .spotlight-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    opacity: 0.7;
+  }
+  
+  .spotlight {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 50% 50%, var(--primary-transparent) 0%, rgba(0, 0, 0, 0) 60%);
+    opacity: 0;
+    mix-blend-mode: screen;
+    transition: opacity 0.5s ease;
+  }
+  
+  /* Performance Optimizations */
+  body.low-power-mode .fullpage-animation-container {
+    opacity: 0.3;
+  }
+  
+  body.low-power-mode .particles-container,
+  body.low-power-mode .floating-elements-container {
+    display: none;
+  }
+  
+  /* Reduce animations for users who prefer reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .fullpage-animation-container * {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+  
+  /* Reduce animations on mobile devices */
+  @media (max-width: 768px) {
+    .particles-container {
+      opacity: 0.5;
+    }
+  
+    .floating-elements-container {
+      opacity: 0.3;
+    }
+  
+    .wave {
+      animation-duration: 30s;
+    }
+  }
+  
+  /* Class to disable animations completely */
+  .disable-animations .fullpage-animation-container {
+    display: none;
+  }
+  
+  

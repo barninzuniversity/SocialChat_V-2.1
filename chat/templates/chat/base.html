@@ -3,6 +3,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Always-On Animations -->
+    <link rel="stylesheet" href="{% static 'css/vibrant-animations.css' %}">
+    <script src="{% static 'js/always-on-animations.js' %}"></script>
+    <!-- In your base.html head section -->
+     <!-- Full Page Animations CSS -->
+    <link rel="stylesheet" href="{% static 'css/fullpage-animations.css' %}">
+    <script src="{% static 'js/components/background-animations-loader.js' %}"></script>
+    <script src="{% static 'js/components/animation-injector.js' %}"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SocialChat{% endblock %}</title>
@@ -348,9 +356,7 @@
     </style>
     {% block extra_css %}{% endblock %}
 </head>
-<body class="{% if request.session.dark_mode %}dark{% endif %}">
-    <!-- Splash Screen -->
-    <div class="splash-screen">
+<body class="{% if request.session.dark_mode %}dark{% endif %} {{ page_animation_class }}">    <div class="splash-screen">
         <div class="splash-logo">
             <div class="splash-icon">
                 <i class="fas fa-comments"></i>
@@ -409,6 +415,12 @@
                             {% endif %}
                             <span class="d-none d-md-inline">{{ user.username }}</span>
                         </a>
+                        <!-- Animation Toggle -->
+                        <div class="me-3">
+                            <button id="animation-toggle" class="btn btn-sm btn-outline-secondary" title="Toggle Animations">
+                                <i class="fas fa-magic"></i>
+                            </button>
+                        </div>
                         <div class="dropdown-menu dropdown-menu-end">
                             <a class="dropdown-item" href="{% url 'profile_detail' username=user.username %}">
                                 <i class="fas fa-user me-2"></i> Profile
@@ -467,7 +479,8 @@
         
         {% block content %}{% endblock %}
     </div>
-
+    <!-- Background Animations -->
+    <script src="{% static 'js/components/fullpage-animation.js' %}"></script>
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.3"></script>
@@ -577,5 +590,56 @@
             }
         });
     </script>
+    <script>
+                // Animation toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            const animationToggle = document.getElementById('animation-toggle');
+            if (animationToggle) {
+                // Check initial state
+                const animationsDisabled = localStorage.getItem('disable-animations') === 'true';
+                
+                // Update button appearance based on state
+                if (animationsDisabled) {
+                    animationToggle.classList.remove('btn-outline-secondary');
+                    animationToggle.classList.add('btn-secondary');
+                    animationToggle.innerHTML = '<i class="fas fa-magic-slash"></i>';
+                    document.body.classList.add('disable-animations');
+                }
+                
+                // Add click handler
+                animationToggle.addEventListener('click', function() {
+                    const isDisabled = document.body.classList.contains('disable-animations');
+                    
+                    if (isDisabled) {
+                        // Enable animations
+                        localStorage.removeItem('disable-animations');
+                        document.body.classList.remove('disable-animations');
+                        animationToggle.classList.remove('btn-secondary');
+                        animationToggle.classList.add('btn-outline-secondary');
+                        animationToggle.innerHTML = '<i class="fas fa-magic"></i>';
+                        
+                        // Reload animations
+                        location.reload();
+                    } else {
+                        // Disable animations
+                        localStorage.setItem('disable-animations', 'true');
+                        document.body.classList.add('disable-animations');
+                        animationToggle.classList.remove('btn-outline-secondary');
+                        animationToggle.classList.add('btn-secondary');
+                        animationToggle.innerHTML = '<i class="fas fa-magic-slash"></i>';
+                        
+                        // Remove animation container
+                        const container = document.getElementById('fullpage-animation-container');
+                        if (container) {
+                            container.remove();
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+     <!-- ...existing content... -->
+    {% include 'chat/includes/animations.html' %}
+
 </body>
 </html> 

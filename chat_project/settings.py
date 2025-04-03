@@ -77,6 +77,9 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "chat.context_processors.timezone_context_processor",
+                'chat.views.get_page_animation_class',  # Add this line
+                'chat.context_processors.animation_context',  # Add this line
+
             ],
         },
     },

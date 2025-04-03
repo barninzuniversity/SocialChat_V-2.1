@@ -8,6 +8,8 @@ from django.contrib import messages
 import json, asyncio, time
 from datetime import datetime
 from channels.db import database_sync_to_async
+
+from chat.content_moderation import moderate_image, moderate_video
 from .models import Profile, FriendRequest, Post, ChatRoom, Message, BlockedPost, PostReaction, Comment, CommentReaction, PostShare, Repost, FriendList, MessageReaction, VoiceCall, PostImage, PostVideo, ContentModerationStatus
 from .forms import ProfileForm, PostForm
 from django.db.models.functions import Now
@@ -1720,3 +1722,20 @@ def accept_comment(request, comment_id):
     # Return to the previous page
     referer = request.META.get('HTTP_REFERER', 'home')
     return redirect(referer)
+def get_page_animation_class(request):
+    """
+    Context processor to add page-specific animation classes
+    """
+    path = request.path
+    animation_class = ""
+    
+    if path == "/" or path.startswith("/home"):
+        animation_class = "home-page"
+    elif "/profile" in path:
+        animation_class = "profile-page"
+    elif "/chat" in path:
+        animation_class = "chat-page"
+    elif "/login" in path or "/signup" in path:
+        animation_class = "auth-page"
+    
+    return {"page_animation_class": animation_class}
