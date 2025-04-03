@@ -10,7 +10,7 @@ from datetime import datetime
 from channels.db import database_sync_to_async
 
 from chat.content_moderation import moderate_image, moderate_video
-from .models import Profile, FriendRequest, Post, ChatRoom, Message, BlockedPost, PostReaction, Comment, CommentReaction, PostShare, Repost, FriendList, MessageReaction, VoiceCall, PostImage, PostVideo, ContentModerationStatus
+from .models import Notification, Profile, FriendRequest, Post, ChatRoom, Message, BlockedPost, PostReaction, Comment, CommentReaction, PostShare, Repost, FriendList, MessageReaction, VoiceCall, PostImage, PostVideo, ContentModerationStatus
 from .forms import ProfileForm, PostForm
 from django.db.models.functions import Now
 from django.db.models.signals import post_save
@@ -1722,6 +1722,30 @@ def accept_comment(request, comment_id):
     # Return to the previous page
     referer = request.META.get('HTTP_REFERER', 'home')
     return redirect(referer)
+
+@login_required
+def notifications_view(request):
+    notifications = request.user.notifications.all().order_by('-created_at')[:20]
+    unread_count = request.user.notifications.filter(is_read=False).count()
+    
+    context = {
+        'notifications': notifications,
+        'unread_notifications_count': unread_count
+    }
+    
+    # If it's an HTMX request, return just the notification list
+    if request.headers.get('HX-Request'):
+        return render(request, 'chat/includes/notification_list.html', context)
+    
+    return render(request, 'chat/includes/notification_center.html', context)
+
+@login_required
+def mark_notification_read(request, notification_id):
+    notification = get_object_or_404(Notification, id=notification_id, recipient=request.user)
+    notification.is_read = True
+    notification.save()
+    return HttpResponse()
+
 def get_page_animation_class(request):
     """
     Context processor to add page-specific animation classes

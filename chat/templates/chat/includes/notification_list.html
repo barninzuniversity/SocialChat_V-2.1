@@ -1,0 +1,14 @@
+{% for notification in notifications %}
+<div class="notification-item {% if not notification.is_read %}notification-unread{% endif %}" 
+     data-notification-id="{{ notification.id }}">
+    <img src="{{ notification.sender.profile.avatar.url }}" alt="Avatar" class="notification-avatar">
+    <div class="notification-content">
+        <p class="notification-text">{{ notification.message }}</p>
+        <p class="notification-time">{{ notification.created_at|timesince }} ago</p>
+    </div>
+</div>
+{% empty %}
+<div class="p-3 text-center text-muted">
+    No notifications yet
+</div>
+{% endfor %}

@@ -15,7 +15,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SocialChat{% endblock %}</title>
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C17.52 2 22 6.48 22 12C22 17.52 17.52 22 12 22C6.48 22 2 17.52 2 12C2 6.48 6.48 2 12 2M8 7V17H17V12H12V7H8Z' fill='%234F46E5'/%3E%3C/svg%3E" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C17.52 2 22 6.48 22 12C22 17.52 17.52 22 12 22C6.48 22 2 17.52 2 12C2 6.48 6.48 6.48 2 12 2M8 7V17H17V12H12V7H8Z' fill='%234F46E5'/%3E%3C/svg%3E" />
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap" rel="stylesheet">
     <!-- Bootstrap 5 CSS -->
@@ -356,7 +356,7 @@
     </style>
     {% block extra_css %}{% endblock %}
 </head>
-<body class="{% if request.session.dark_mode %}dark{% endif %} {{ page_animation_class }}">    <div class="splash-screen">
+<body class="{% if request.session.dark_mode %}dark{% endif %} {{ page_animation_class }}" style="background-color: #F4E9F3;">    <div class="splash-screen">
         <div class="splash-logo">
             <div class="splash-icon">
                 <i class="fas fa-comments"></i>
@@ -401,57 +401,59 @@
                     </li>
                 </ul>
                 
-                <div class="d-flex align-items-center">
-                    <!-- User profile dropdown -->
-                    {% if user.is_authenticated %}
-                    <div class="dropdown">
-                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            {% if user.profile.avatar %}
-                            <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" class="profile-avatar-sm me-2">
-                            {% else %}
-                            <div class="profile-avatar-sm me-2 d-flex align-items-center justify-content-center bg-primary text-white">
-                                {{ user.username.0|upper }}
-                            </div>
+                <div class="navbar-nav ms-auto">
+                    <!-- Notifications Button -->
+                    <div class="nav-item dropdown me-3">
+                        <a class="nav-link position-relative" href="#" id="notificationToggle" role="button">
+                            <i class="fas fa-bell"></i>
+                            {% if unread_notifications_count > 0 %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger notification-badge">
+                                {{ unread_notifications_count }}
+                            </span>
                             {% endif %}
-                            <span class="d-none d-md-inline">{{ user.username }}</span>
                         </a>
-                        <!-- Animation Toggle -->
-                        <div class="me-3">
-                            <button id="animation-toggle" class="btn btn-sm btn-outline-secondary" title="Toggle Animations">
-                                <i class="fas fa-magic"></i>
-                            </button>
-                        </div>
-                        <div class="dropdown-menu dropdown-menu-end">
-                            <a class="dropdown-item" href="{% url 'profile_detail' username=user.username %}">
-                                <i class="fas fa-user me-2"></i> Profile
-                            </a>
-                            <a class="dropdown-item" href="{% url 'edit_profile' %}">
-                                <i class="fas fa-cog me-2"></i> Settings
-                            </a>
-                            <a class="dropdown-item" href="{% url 'chat_list' %}">My Messages</a>
-                            {% if user.is_staff or user.is_superuser %}
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'moderation_dashboard' %}">
-                                <i class="bi bi-shield-check"></i> Content Moderation
-                            </a>
-                            <a class="dropdown-item" href="{% url 'admin:index' %}">
-                                <i class="bi bi-gear"></i> Admin Panel
-                            </a>
-                            {% endif %}
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{% url 'logout' %}">
-                                <i class="fas fa-sign-out-alt me-2"></i> Logout
-                            </a>
-                        </div>
                     </div>
-                    {% else %}
-                    <a href="{% url 'login' %}" class="btn btn-primary me-2">Log In</a>
-                    <a href="{% url 'signup' %}" class="btn btn-outline-primary">Sign Up</a>
+
+                    <!-- Profile Button -->
+                    {% if user.is_authenticated %}
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            {% if user.profile.avatar %}
+                                <img src="{{ user.profile.avatar.url }}" alt="Profile" class="rounded-circle" width="32" height="32">
+                            {% else %}
+                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    {{ user.username.0|upper }}
+                                </div>
+                            {% endif %}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                            <li><a class="dropdown-item" href="{% url 'profile_detail' username=user.username %}">My Profile</a></li>
+                            <li><a class="dropdown-item" href="{% url 'edit_profile' %}">Edit Profile</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="post" action="{% url 'logout' %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="dropdown-item">Logout</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
                     {% endif %}
                 </div>
             </div>
         </div>
     </nav>
+
+    <!-- Notification Center -->
+    <div id="notification-center" class="notification-center shadow" style="display: none;">
+        <div class="notification-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">Notifications</h6>
+            <button type="button" class="btn-close" aria-label="Close" id="closeNotifications"></button>
+        </div>
+        <div class="notification-list" hx-get="{% url 'notifications' %}" hx-trigger="load"></div>
+    </div>
+
+    {% include 'chat/includes/notification_center.html' %}
 
     <!-- Main container -->
     <div class="container">
@@ -640,6 +642,7 @@
     </script>
      <!-- ...existing content... -->
     {% include 'chat/includes/animations.html' %}
-
+    <script src="{% static 'js/components/notifications.js' %}"></script>
 </body>
-</html> 
+</html>
+

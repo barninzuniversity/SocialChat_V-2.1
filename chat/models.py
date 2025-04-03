@@ -477,3 +477,15 @@ class VoiceCall(models.Model):
         if self.end_time and self.status == 'completed':
             return (self.end_time - self.start_time).total_seconds()
         return None
+
+class Notification(models.Model):
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_notifications')
+    message = models.TextField()
+    notification_type = models.CharField(max_length=50)  # e.g., 'message', 'like', 'comment'
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    related_object_id = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']

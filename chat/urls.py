@@ -58,4 +58,8 @@ urlpatterns = [
     # Comment moderation routes - using existing content moderation views
     path('comment/<int:comment_id>/reject/', views.reject_content, name='reject_comment'),
     path('comment/<int:comment_id>/approve/', views.approve_content, name='accept_comment'),
-] 
+    
+    # Notifications
+    path('notifications/', views.notifications_view, name='notifications'),
+    path('notifications/<int:notification_id>/read/', views.mark_notification_read, name='mark_notification_read'),
+]

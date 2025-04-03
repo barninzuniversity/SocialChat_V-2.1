@@ -1,0 +1,18 @@
+<div id="notification-center" class="notification-center" style="display: none;">
+    <div class="notification-header">
+        Notifications
+    </div>
+    <ul class="notification-list" hx-get="{% url 'notifications' %}" hx-trigger="load">
+        {% for notification in notifications %}
+        <li class="notification-item {% if not notification.is_read %}notification-unread{% endif %}"
+            hx-get="{% url 'mark_notification_read' notification.id %}"
+            hx-trigger="click">
+            <img src="{{ notification.sender.profile.avatar.url }}" alt="Avatar" class="notification-avatar">
+            <div class="notification-content">
+                <p class="notification-text">{{ notification.message }}</p>
+                <p class="notification-time">{{ notification.created_at|timesince }} ago</p>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+</div>

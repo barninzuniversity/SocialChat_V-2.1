@@ -1,8 +1,8 @@
 /* Instagram Theme CSS */
 :root {
   /* Instagram Colors */
-  --ig-primary: #0095f6;
-  --ig-primary-hover: #1877f2;
+  --ig-primary: #f4e9f3; /* Changed from #0095f6 to #F4E9F3 */
+  --ig-primary-hover: #e6d7e5; /* Changed from #1877f2 to a slightly darker shade */
   --ig-red: #ed4956;
   --ig-dark: #262626;
   --ig-light-dark: #8e8e8e;
@@ -10,9 +10,9 @@
   --ig-light-bg: #fafafa;
   --ig-border: #dbdbdb;
   --ig-separator: #efefef;
-  --ig-highlight: #0095f6;
+  --ig-highlight: #f4e9f3; /* Changed from #0095f6 to #F4E9F3 */
   --ig-notification: #ff3040;
-  
+
   /* Dark Mode Colors */
   --ig-dark-bg: #121212;
   --ig-dark-card: #1e1e1e;
@@ -49,7 +49,7 @@ body.dark .navbar {
 }
 
 .navbar-brand {
-  font-family: 'Instagram Sans Script', cursive, 'Grand Hotel', cursive;
+  font-family: "Instagram Sans Script", cursive, "Grand Hotel", cursive;
   font-size: 24px;
   font-weight: 600;
 }
@@ -107,7 +107,8 @@ body.dark .card-footer {
 }
 
 /* Profile styling */
-.profile-avatar, .profile-avatar-sm {
+.profile-avatar,
+.profile-avatar-sm {
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--ig-border);
@@ -131,7 +132,8 @@ body.dark .card-footer {
   border-radius: 4px;
 }
 
-.btn-primary:hover, .btn-primary:focus {
+.btn-primary:hover,
+.btn-primary:focus {
   background-color: var(--ig-primary-hover);
   border-color: var(--ig-primary-hover);
 }
@@ -230,7 +232,8 @@ body.dark .comment-content {
   border-radius: 10px;
 }
 
-.badge-unread, .unread-count {
+.badge-unread,
+.unread-count {
   background-color: var(--ig-notification);
   color: white;
 }
@@ -298,11 +301,23 @@ body.dark .story-circle img {
 
 /* Heart like animation */
 @keyframes heart-burst {
-  0% { transform: scale(0); opacity: 0; }
-  15% { transform: scale(1.2); opacity: 1; }
-  30% { transform: scale(0.9); }
-  45% { transform: scale(1.1); }
-  60% { transform: scale(1); }
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  15% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  30% {
+    transform: scale(0.9);
+  }
+  45% {
+    transform: scale(1.1);
+  }
+  60% {
+    transform: scale(1);
+  }
 }
 
 .heart-animation {
@@ -320,7 +335,9 @@ body.dark .story-circle img {
 }
 
 @keyframes spinner {
-  to { transform: rotate(1turn); }
+  to {
+    transform: rotate(1turn);
+  }
 }
 
 /* Instagram Story Viewer */
@@ -370,7 +387,7 @@ body.dark .story-circle img {
   left: 0;
   right: 0;
   padding: 16px;
-  background: linear-gradient(0deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 100%);
   z-index: 2;
 }
 
@@ -380,7 +397,7 @@ body.dark .story-circle img {
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent; 
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -406,13 +423,13 @@ body.dark ::-webkit-scrollbar-thumb:hover {
     padding-left: 0;
     padding-right: 0;
   }
-  
+
   .card {
     border-left: none;
     border-right: none;
     border-radius: 0;
   }
-  
+
   .navbar {
     padding: 8px 16px;
   }
@@ -436,13 +453,13 @@ body.dark ::-webkit-scrollbar-thumb:hover {
 
 /* Typography */
 .instagram-font {
-  font-family: 'Grand Hotel', cursive;
+  font-family: "Grand Hotel", cursive;
   font-size: 1.8rem;
 }
 
 /* Button Styles */
 .btn-instagram {
-  background-color: var(--ig-primary);
+  background-color: #f4e9f3; /* Changed from var(--ig-primary) to #F4E9F3 */
   color: white;
   border-radius: 4px;
   font-weight: 600;
@@ -452,7 +469,7 @@ body.dark ::-webkit-scrollbar-thumb:hover {
 }
 
 .btn-instagram:hover {
-  background-color: var(--ig-primary-hover);
+  background-color: #e6d7e5; /* Slightly darker shade for hover */
   color: white;
 }
 
@@ -536,7 +553,7 @@ body.dark .card-instagram .card-footer {
   transition: transform 0.3s ease;
 }
 
-.story-circle img, 
+.story-circle img,
 .story-circle div {
   width: 100%;
   height: 100%;
@@ -666,8 +683,12 @@ body.dark .comment-bubble {
 
 /* Loading Effects */
 @keyframes story-progress {
-  0% { width: 0%; }
-  100% { width: 100%; }
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
 }
 
 .story-progress-bar {
@@ -732,101 +753,178 @@ body.dark .reaction-count {
 
 /* Media gallery styling for multiple images/videos */
 .post-media-gallery {
-    margin-top: 15px;
+  margin-top: 15px;
 }
 
 .post-media-gallery .row {
-    --bs-gutter-x: 0.5rem;
+  --bs-gutter-x: 0.5rem;
 }
 
 .post-media-gallery .col-4,
 .post-media-gallery .col-6,
 .post-media-gallery .col-12 {
-    aspect-ratio: 1/1;
-    max-height: 300px;
-    overflow: hidden;
-    margin-bottom: 0.5rem;
+  aspect-ratio: 1 / 1;
+  max-height: 300px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
 }
 
 .post-media-gallery img,
 .post-media-gallery video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
 }
 
 .post-media-gallery img:hover,
 .post-media-gallery video:hover {
-    transform: scale(1.02);
+  transform: scale(1.02);
 }
 
 .post-media-gallery .position-relative {
-    overflow: hidden;
-    border-radius: 8px;
+  overflow: hidden;
+  border-radius: 8px;
 }
 
 .more-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    font-size: 1.5rem;
-    font-weight: bold;
-    cursor: pointer;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
 }
 
 /* File preview styles for uploads */
 #selected-files {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .file-preview-item {
-    position: relative;
-    width: 100px;
-    height: 100px;
-    border-radius: 8px;
-    overflow: hidden;
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .file-preview-item img,
 .file-preview-item video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .file-preview-item .remove-item {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background-color: rgba(255, 255, 255, 0.7);
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 10px;
-    cursor: pointer;
-    color: #dc3545;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 10px;
+  cursor: pointer;
+  color: #dc3545;
 }
 
 .file-preview-item .file-type {
-    position: absolute;
-    bottom: 5px;
-    left: 5px;
-    background-color: rgba(0, 0, 0, 0.5);
-    color: white;
-    padding: 2px 5px;
-    border-radius: 3px;
-    font-size: 10px;
-} 
+  position: absolute;
+  bottom: 5px;
+  left: 5px;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+}
+
+/* Notification Center Styles */
+.notification-center {
+    position: fixed;
+    right: 20px;
+    top: 60px;
+    width: 350px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1050;
+    max-height: 80vh;
+    overflow-y: auto;
+    display: none;
+}
+
+.notification-header {
+    padding: 15px;
+    border-bottom: 1px solid var(--ig-border);
+}
+
+.notification-list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.notification-item {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--ig-border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.notification-item:hover {
+    background-color: var(--ig-hover);
+}
+
+.notification-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-text {
+    margin: 0;
+    font-size: 14px;
+}
+
+.notification-time {
+    font-size: 12px;
+    color: var(--ig-secondary-text);
+    margin-top: 4px;
+}
+
+.notification-unread {
+    background-color: #F4E9F3;
+}
+
+/* Dark mode styles */
+body.dark .notification-center {
+    background: var(--ig-dark-bg);
+    border: 1px solid var(--ig-dark-border);
+}
+
+body.dark .notification-item:hover {
+    background-color: var(--ig-dark-hover);
+}
+
