@@ -1,37 +1,38 @@
-/* Vibrant Animations for SocialChat
-   Always-on animations with high visibility */
+/* Ultra-Clear Vibrant Animations for SocialChat
+   Maximum visibility with crystal clear effects */
 
-/* Animation Variables - High Contrast Colors */
+/* Animation Variables - Ultra-Vibrant Colors */
 :root {
-    --anim-primary: #4361ee;
-    --anim-secondary: #3a0ca3;
-    --anim-accent: #f72585;
-    --anim-highlight: #4cc9f0;
-    --anim-contrast: #7209b7;
+    /* Extremely vibrant, high-saturation colors */
+    --anim-primary: #0055ff; /* Brighter blue */
+    --anim-secondary: #6600ff; /* Vibrant purple */
+    --anim-accent: #ff0066; /* Hot pink */
+    --anim-highlight: #00ccff; /* Bright cyan */
+    --anim-contrast: #9900ff; /* Vivid violet */
   
-    /* Higher opacity values for better visibility */
-    --anim-opacity-high: 0.9;
-    --anim-opacity-medium: 0.6;
-    --anim-opacity-low: 0.5;
+    /* Maximum opacity values for crystal clear visibility */
+    --anim-opacity-high: 1.0; /* Full opacity */
+    --anim-opacity-medium: 0.85; /* Very high opacity */
+    --anim-opacity-low: 0.7; /* Still quite visible */
   
-    /* Animation speeds */
-    --anim-speed-slow: 20s;
-    --anim-speed-medium: 12s;
-    --anim-speed-fast: 6s;
+    /* Animation speeds - slightly faster for more noticeable movement */
+    --anim-speed-slow: 18s;
+    --anim-speed-medium: 10s;
+    --anim-speed-fast: 5s;
   }
   
-  /* Dark mode adjustments */
+  /* Dark mode with even more intense colors */
   body.dark {
-    --anim-primary: #4cc9f0;
-    --anim-secondary: #f72585;
-    --anim-accent: #7209b7;
-    --anim-highlight: #4361ee;
-    --anim-contrast: #3a0ca3;
+    --anim-primary: #00ccff; /* Neon blue */
+    --anim-secondary: #ff0066; /* Neon pink */
+    --anim-accent: #9900ff; /* Neon purple */
+    --anim-highlight: #0055ff; /* Electric blue */
+    --anim-contrast: #00ff99; /* Neon green */
   
-    /* Even higher opacity for dark mode */
-    --anim-opacity-high: 0.6;
-    --anim-opacity-medium: 0.4;
-    --anim-opacity-low: 0.2;
+    /* Maximum opacity for dark mode too */
+    --anim-opacity-high: 1.0;
+    --anim-opacity-medium: 0.9;
+    --anim-opacity-low: 0.8;
   }
   
   /* Main animation container */
@@ -46,7 +47,7 @@
     pointer-events: none;
   }
   
-  /* Animated gradient background */
+  /* Animated gradient background with maximum opacity */
   .sc-gradient-bg {
     position: absolute;
     top: 0;
@@ -55,9 +56,9 @@
     height: 100%;
     background: linear-gradient(
       45deg,
-      rgba(67, 97, 238, var(--anim-opacity-medium)) 0%,
-      rgba(58, 12, 163, var(--anim-opacity-medium)) 50%,
-      rgba(247, 37, 133, var(--anim-opacity-medium)) 100%
+      rgba(0, 85, 255, var(--anim-opacity-medium)) 0%,
+      rgba(102, 0, 255, var(--anim-opacity-medium)) 50%,
+      rgba(255, 0, 102, var(--anim-opacity-medium)) 100%
     );
     background-size: 400% 400%;
     animation: sc-gradient-shift var(--anim-speed-slow) ease infinite;
@@ -75,17 +76,18 @@
     }
   }
   
-  /* Animated orbs */
+  /* Animated orbs with reduced blur for clarity and full opacity */
   .sc-orb {
     position: absolute;
     border-radius: 50%;
-    filter: blur(60px);
-    opacity: var(--anim-opacity-medium);
+    filter: blur(50px); /* Reduced blur for more definition */
+    opacity: var(--anim-opacity-high); /* Full opacity */
+    mix-blend-mode: screen; /* Makes colors more vibrant when overlapping */
   }
   
   .sc-orb-1 {
-    width: 300px;
-    height: 300px;
+    width: 500px; /* Even larger */
+    height: 500px;
     background-color: var(--anim-primary);
     top: -100px;
     right: -100px;
@@ -93,8 +95,8 @@
   }
   
   .sc-orb-2 {
-    width: 250px;
-    height: 250px;
+    width: 450px; /* Even larger */
+    height: 450px;
     background-color: var(--anim-accent);
     bottom: -50px;
     left: -50px;
@@ -102,8 +104,8 @@
   }
   
   .sc-orb-3 {
-    width: 200px;
-    height: 200px;
+    width: 400px; /* Even larger */
+    height: 400px;
     background-color: var(--anim-highlight);
     top: 40%;
     left: 25%;
@@ -115,8 +117,8 @@
       transform: translate(0, 0);
     }
     100% {
-      transform: translate(50px, 50px);
-    }
+      transform: translate(70px, 70px);
+    } /* Larger movement */
   }
   
   @keyframes sc-pulse {
@@ -125,16 +127,16 @@
       opacity: var(--anim-opacity-medium);
     }
     50% {
-      transform: scale(1.2);
+      transform: scale(1.3);
       opacity: var(--anim-opacity-high);
-    }
+    } /* More dramatic pulse */
     100% {
       transform: scale(1);
       opacity: var(--anim-opacity-medium);
     }
   }
   
-  /* Animated particles */
+  /* Animated particles with maximum visibility */
   .sc-particles-container {
     position: absolute;
     top: 0;
@@ -146,8 +148,9 @@
   .sc-particle {
     position: absolute;
     border-radius: 50%;
-    opacity: var(--anim-opacity-high);
+    opacity: var(--anim-opacity-high); /* Full opacity */
     animation: sc-particle-float 15s ease-in-out infinite;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.7); /* Glow effect */
   }
   
   @keyframes sc-particle-float {
@@ -155,20 +158,20 @@
       transform: translate(0, 0);
     }
     25% {
-      transform: translate(50px, 50px);
-    }
+      transform: translate(70px, 70px);
+    } /* Larger movement */
     50% {
-      transform: translate(100px, 0);
-    }
+      transform: translate(140px, 0);
+    } /* Larger movement */
     75% {
-      transform: translate(50px, -50px);
-    }
+      transform: translate(70px, -70px);
+    } /* Larger movement */
     100% {
       transform: translate(0, 0);
     }
   }
   
-  /* Animated waves */
+  /* Animated waves with maximum visibility */
   .sc-waves-container {
     position: absolute;
     bottom: 0;
@@ -189,31 +192,31 @@
   }
   
   .sc-wave-1 {
-    background-color: rgba(67, 97, 238, var(--anim-opacity-low));
-    height: 100px;
+    background-color: rgba(0, 85, 255, var(--anim-opacity-medium));
+    height: 120px; /* Taller waves */
     animation: sc-wave-animation var(--anim-speed-slow) linear infinite;
     z-index: 1;
-    opacity: var(--anim-opacity-medium);
+    opacity: var(--anim-opacity-high); /* Full opacity */
     border-radius: 100% 100% 0 0;
   }
   
   .sc-wave-2 {
-    background-color: rgba(247, 37, 133, var(--anim-opacity-low));
-    height: 80px;
+    background-color: rgba(255, 0, 102, var(--anim-opacity-medium));
+    height: 100px; /* Taller waves */
     animation: sc-wave-animation calc(var(--anim-speed-slow) * 0.8) linear infinite;
     animation-delay: -5s;
     z-index: 2;
-    opacity: var(--anim-opacity-medium);
+    opacity: var(--anim-opacity-high); /* Full opacity */
     border-radius: 100% 100% 0 0;
   }
   
   .sc-wave-3 {
-    background-color: rgba(76, 201, 240, var(--anim-opacity-low));
-    height: 60px;
+    background-color: rgba(0, 204, 255, var(--anim-opacity-medium));
+    height: 80px; /* Taller waves */
     animation: sc-wave-animation calc(var(--anim-speed-slow) * 0.6) linear infinite;
     animation-delay: -2s;
     z-index: 3;
-    opacity: var(--anim-opacity-medium);
+    opacity: var(--anim-opacity-high); /* Full opacity */
     border-radius: 100% 100% 0 0;
   }
   
@@ -226,15 +229,16 @@
     }
   }
   
-  /* Page-specific animation styles */
+  /* Page-specific animation styles with maximum intensity */
   .home-page .sc-orb-1 {
     opacity: var(--anim-opacity-high);
-    width: 400px;
-    height: 400px;
+    width: 600px; /* Even larger */
+    height: 600px;
   }
   
   .profile-page .sc-wave-1 {
-    background-color: rgba(247, 37, 133, var(--anim-opacity-medium));
+    background-color: rgba(255, 0, 102, var(--anim-opacity-high));
+    height: 150px; /* Even taller */
   }
   
   .chat-page .sc-particles-container {
@@ -244,30 +248,62 @@
   .auth-page .sc-gradient-bg {
     background: linear-gradient(
       135deg,
-      rgba(67, 97, 238, var(--anim-opacity-high)) 0%,
-      rgba(247, 37, 133, var(--anim-opacity-high)) 100%
+      rgba(0, 85, 255, var(--anim-opacity-high)) 0%,
+      rgba(255, 0, 102, var(--anim-opacity-high)) 100%
     );
   }
   
-  /* Mobile optimizations */
+  /* Special enhancement for login/signup pages */
+  .auth-page .sc-orb-1 {
+    width: 700px; /* Massive orb for login page */
+    height: 700px;
+    opacity: var(--anim-opacity-high);
+    filter: blur(40px); /* Less blur for more definition */
+    animation-duration: 15s; /* Faster animation */
+  }
+  
+  .auth-page .sc-orb-2 {
+    width: 600px; /* Massive orb */
+    height: 600px;
+    opacity: var(--anim-opacity-high);
+    filter: blur(40px); /* Less blur for more definition */
+    animation-duration: 12s; /* Faster animation */
+  }
+  
+  /* Add extra orbs for login page */
+  .auth-page .sc-orb-extra {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background-color: var(--anim-contrast);
+    filter: blur(40px);
+    opacity: var(--anim-opacity-high);
+    top: 30%;
+    right: 40%;
+    animation: sc-pulse 8s ease-in-out infinite;
+  }
+  
+  /* Mobile optimizations - still keeping animations ultra-clear */
   @media (max-width: 768px) {
     .sc-orb {
-      opacity: var(--anim-opacity-medium);
+      opacity: var(--anim-opacity-high); /* Keep full opacity even on mobile */
+      filter: blur(40px); /* Less blur on mobile */
     }
   
     .sc-orb-1 {
-      width: 200px;
-      height: 200px;
+      width: 400px; /* Still quite large on mobile */
+      height: 400px;
     }
   
     .sc-orb-2 {
-      width: 150px;
-      height: 150px;
+      width: 350px; /* Still quite large on mobile */
+      height: 350px;
     }
   
     .sc-orb-3 {
-      width: 100px;
-      height: 100px;
+      width: 300px; /* Still quite large on mobile */
+      height: 300px;
     }
   }
   
